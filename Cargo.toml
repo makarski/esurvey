@@ -1,0 +1,8 @@
+[package]
+name = "probation-csv"
+version = "0.1.0"
+authors = ["Siamion Makarski <sm@hellofresh.com>"]
+edition = "2018"
+
+[dependencies]
+csv = "1"
