@@ -118,17 +118,25 @@ fn main() {
     let mut rdr = csv::Reader::from_reader(io::stdin());
     for colleague in rdr.records() {
         let feedback = colleague.expect("could not read colleague's feedback");
-        let mut feedback_iter = feedback.iter();
+        let mut feedback_iter = feedback.iter().enumerate();
 
         for q in &questions {
             println!("\nScanning '{}'...", q.name);
             let mut counter: u32 = 0;
 
             loop {
-                let answer = feedback_iter
+                let (index, answer) = feedback_iter
                     .next()
                     .expect("could not retrieve the next value");
+
+                if index < 2 {
+                    // skip email and timestamp fields
+                    continue;
+                }
+
                 let grade: u32 = answer.parse().expect("could not parse grade");
+
+                println!("> iter position: {}", index);
 
                 println!(">> recording grade: {}, counter is: {}", grade, counter);
 
