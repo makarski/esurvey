@@ -116,12 +116,14 @@ fn main() {
     ];
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
-    for colleague in rdr.records() {
+    for (index, colleague) in rdr.records().enumerate() {
         let feedback = colleague.expect("could not read colleague's feedback");
         let mut feedback_iter = feedback.iter().enumerate();
 
+        println!(">> scanning response: {}\n", index);
+
         for q in &questions {
-            println!("\nScanning '{}'...", q.name);
+            println!("scanning '{}'...", q.name);
             let mut counter: u32 = 0;
 
             loop {
@@ -135,32 +137,23 @@ fn main() {
                 }
 
                 let grade: u32 = answer.parse().expect("could not parse grade");
-
-                println!("> iter position: {}", index);
-
-                println!(">> recording grade: {}, counter is: {}", grade, counter);
-
                 q.grades.borrow_mut().push(grade);
 
                 // break to the next category
                 counter = counter + 1;
-
-                println!("counter: {}; questions: {}", counter, q.questions);
                 if counter == q.questions {
-                    println!("i break {} == {}", counter, q.questions);
                     break;
                 }
             }
         }
     }
 
+    let target_filename = format!("{}.csv", feedback_type_in);
     let mut wrt = csv::WriterBuilder::new()
-        .from_path(format!("{}.csv", feedback_type_in))
+        .from_path(&target_filename)
         .unwrap();
 
     for i in 0..2 {
-        println!("> i value is {}", i);
-
         for skill in &questions {
             if i == 0 {
                 wrt.write_field(skill.name.description()).unwrap();
@@ -170,4 +163,8 @@ fn main() {
         }
         wrt.write_record(None::<&[u8]>).unwrap();
     }
+
+    wrt.flush().unwrap();
+
+    println!("\ngenerated file: {}", target_filename);
 }
