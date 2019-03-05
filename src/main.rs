@@ -2,7 +2,50 @@ extern crate csv;
 
 use std::cell::RefCell;
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::io;
+use std::str::FromStr;
+
+const SelfAssessmentStr: &str = "self-assessment";
+const TeamFeedbackStr: &str = "team-feedback";
+
+enum InAssessmentType {
+    TeamFeedback,
+    SelfAssessment,
+}
+
+impl InAssessmentType {
+    fn questions_config(&self) -> Vec<u32> {
+        match self {
+            InAssessmentType::SelfAssessment => vec![2, 2, 3, 2, 3, 2, 3, 3, 2, 2, 3, 2],
+            InAssessmentType::TeamFeedback => vec![2, 2, 3, 2, 3, 2, 4, 3, 2, 2, 2, 2],
+        }
+    }
+}
+
+impl std::str::FromStr for InAssessmentType {
+    type Err = std::io::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            TeamFeedbackStr => Ok(InAssessmentType::TeamFeedback),
+            SelfAssessmentStr => Ok(InAssessmentType::SelfAssessment),
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "InAssessemntType parse error. valid types: `team-feedback`, `self-assessment`",
+            )),
+        }
+    }
+}
+
+impl Display for InAssessmentType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            InAssessmentType::SelfAssessment => write!(f, "self-assessment"),
+            InAssessmentType::TeamFeedback => write!(f, "team-feedback"),
+        }
+    }
+}
 
 enum Skill {
     Adaptability,
@@ -84,35 +127,25 @@ impl fmt::Display for EmployeeSkill {
 }
 
 fn main() {
-    let mut config_questions: Vec<u32>;
-
-    let feedback_type_in = std::env::args()
-        .nth(1)
-        .expect("no feedback type provided! valid values: `team-feedback` or `self-assessment`");
-
-    match feedback_type_in.as_str() {
-        "team-feedback" => config_questions = vec![2, 2, 3, 2, 3, 2, 4, 3, 2, 2, 2, 2],
-        "self-assessment" => config_questions = vec![2, 2, 3, 2, 3, 2, 3, 3, 2, 2, 3, 2],
-        _ => {
-            panic!("no feedback type provided! valid values: `team-feedback` or `self-assessment`")
-        }
-    }
-
-    let mut cfg_iter = config_questions.into_iter();
+    let (employee_name, feedback_type) = parse_flags().expect("could not parse input flags");
+    let mut config_questions = feedback_type.questions_config().into_iter();
 
     let questions: Vec<EmployeeSkill> = vec![
-        EmployeeSkill::new(Skill::Adaptability, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Attitude, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Communication, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::CrossFunctionalKnowledge, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Dependability, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Initiative, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Leadership, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Organization, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Responsibility, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::SelfImprovement, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::Teamwork, cfg_iter.next().unwrap()),
-        EmployeeSkill::new(Skill::TechExpertise, cfg_iter.next().unwrap()),
+        EmployeeSkill::new(Skill::Adaptability, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Attitude, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Communication, config_questions.next().unwrap()),
+        EmployeeSkill::new(
+            Skill::CrossFunctionalKnowledge,
+            config_questions.next().unwrap(),
+        ),
+        EmployeeSkill::new(Skill::Dependability, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Initiative, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Leadership, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Organization, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Responsibility, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::SelfImprovement, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::Teamwork, config_questions.next().unwrap()),
+        EmployeeSkill::new(Skill::TechExpertise, config_questions.next().unwrap()),
     ];
 
     let mut rdr = csv::Reader::from_reader(io::stdin());
@@ -148,7 +181,7 @@ fn main() {
         }
     }
 
-    let target_filename = format!("{}.csv", feedback_type_in);
+    let target_filename = format!("{}_{}.csv", employee_name, feedback_type.to_string());
     let mut wrt = csv::WriterBuilder::new()
         .from_path(&target_filename)
         .unwrap();
@@ -167,4 +200,39 @@ fn main() {
     wrt.flush().unwrap();
 
     println!("\ngenerated file: {}", target_filename);
+}
+
+fn parse_flags() -> Result<(String, InAssessmentType), impl std::error::Error> {
+    let mut employee_name = String::new();
+    let mut assessment_type = String::new();
+
+    // todo: remove panics
+    std::env::args().for_each(|arg: String| {
+        if arg.contains("-name=") {
+            employee_name = arg
+                .trim_start_matches("-name=")
+                .parse::<String>()
+                .expect("could not parse `-name` flag");
+        }
+
+        if arg.contains("-type=") {
+            assessment_type = arg
+                .trim_start_matches("-type=")
+                .parse::<String>()
+                .expect("could not parse `-type` flag");
+        }
+    });
+
+    if employee_name.is_empty() || assessment_type.is_empty() {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "empty `-name` or `-type` flags provided",
+        ))
+    } else {
+        let feedback_type = InAssessmentType::from_str(assessment_type.as_str());
+        match feedback_type {
+            Ok(t) => Ok((employee_name, t)),
+            Err(err) => Err(err),
+        }
+    }
 }

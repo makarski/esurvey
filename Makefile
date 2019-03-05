@@ -3,4 +3,4 @@
 all: sample
 
 sample:
-	./probation-csv self-assessment < sample_input.csv
+	./probation-csv -name=john -type=self-assessment < sample_input.csv
