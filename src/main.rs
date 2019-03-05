@@ -62,40 +62,21 @@ enum Skill {
     TechExpertise,
 }
 
-impl Skill {
-    fn description(&self) -> &str {
-        match self {
-            Skill::Adaptability => "Adaptability",
-            Skill::Attitude => "Attitude",
-            Skill::Communication => "Communication",
-            Skill::CrossFunctionalKnowledge => "Cross-functional Knowledge",
-            Skill::Dependability => "Dependability",
-            Skill::Initiative => "Initiative",
-            Skill::Leadership => "Leadership",
-            Skill::Organization => "Organization",
-            Skill::Responsibility => "Responsibility",
-            Skill::SelfImprovement => "Self-Improvement",
-            Skill::Teamwork => "Teamwork",
-            Skill::TechExpertise => "Tech. Expertise",
-        }
-    }
-}
-
 impl fmt::Display for Skill {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Skill::Adaptability => write!(f, "{}", self.description()),
-            Skill::Attitude => write!(f, "{}", self.description()),
-            Skill::Communication => write!(f, "{}", self.description()),
-            Skill::CrossFunctionalKnowledge => write!(f, "{}", self.description()),
-            Skill::Dependability => write!(f, "{}", self.description()),
-            Skill::Initiative => write!(f, "{}", self.description()),
-            Skill::Leadership => write!(f, "{}", self.description()),
-            Skill::Organization => write!(f, "{}", self.description()),
-            Skill::Responsibility => write!(f, "{}", self.description()),
-            Skill::SelfImprovement => write!(f, "{}", self.description()),
-            Skill::Teamwork => write!(f, "{}", self.description()),
-            Skill::TechExpertise => write!(f, "{}", self.description()),
+            Skill::Adaptability => write!(f, "Adaptability"),
+            Skill::Attitude => write!(f, "Attitude"),
+            Skill::Communication => write!(f, "Communication"),
+            Skill::CrossFunctionalKnowledge => write!(f, "Cross-functional Knowledge"),
+            Skill::Dependability => write!(f, "Dependability"),
+            Skill::Initiative => write!(f, "Initiative"),
+            Skill::Leadership => write!(f, "Leadership"),
+            Skill::Organization => write!(f, "Organization"),
+            Skill::Responsibility => write!(f, "Responsibility"),
+            Skill::SelfImprovement => write!(f, "Self-Improvement"),
+            Skill::Teamwork => write!(f, "Teamwork"),
+            Skill::TechExpertise => write!(f, "Tech. Expertise"),
         }
     }
 }
@@ -189,7 +170,7 @@ fn main() {
     for i in 0..2 {
         for skill in &questions {
             if i == 0 {
-                wrt.write_field(skill.name.description()).unwrap();
+                wrt.write_field(skill.name.to_string()).unwrap();
             } else {
                 wrt.write_field(format!("{}", skill.avg())).unwrap();
             }
