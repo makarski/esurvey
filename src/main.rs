@@ -1,8 +1,12 @@
 extern crate csv;
 
+use std::env::args;
+use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::io;
+use std::io::Error as io_err;
+use std::io::ErrorKind as io_err_kind;
 use std::str::FromStr;
 
 const SelfAssessmentStr: &str = "self-assessment";
@@ -23,14 +27,14 @@ impl InAssessmentType {
 }
 
 impl std::str::FromStr for InAssessmentType {
-    type Err = std::io::Error;
+    type Err = io_err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             TeamFeedbackStr => Ok(InAssessmentType::TeamFeedback),
             SelfAssessmentStr => Ok(InAssessmentType::SelfAssessment),
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
+            _ => Err(io_err::new(
+                io_err_kind::InvalidInput,
                 "InAssessemntType parse error. valid types: `team-feedback`, `self-assessment`",
             )),
         }
@@ -186,37 +190,30 @@ fn main() {
     println!("\ngenerated file: {}", target_filename);
 }
 
-fn parse_flags() -> Result<(String, InAssessmentType), impl std::error::Error> {
+fn parse_flags() -> Result<(String, InAssessmentType), Box<dyn std_err>> {
     let mut employee_name = String::new();
     let mut assessment_type = String::new();
 
-    // todo: remove panics
-    std::env::args().for_each(|arg: String| {
+    for arg in args().collect::<Vec<String>>() {
         if arg.contains("-name=") {
-            employee_name = arg
-                .trim_start_matches("-name=")
-                .parse::<String>()
-                .expect("could not parse `-name` flag");
+            employee_name = arg.trim_start_matches("-name=").parse::<String>()?;
         }
 
         if arg.contains("-type=") {
-            assessment_type = arg
-                .trim_start_matches("-type=")
-                .parse::<String>()
-                .expect("could not parse `-type` flag");
+            assessment_type = arg.trim_start_matches("-type=").parse::<String>()?;
         }
-    });
+    }
 
     if employee_name.is_empty() || assessment_type.is_empty() {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
+        return Err(Box::new(io_err::new(
+            io_err_kind::InvalidInput,
             "empty `-name` or `-type` flags provided",
-        ))
-    } else {
-        let feedback_type = InAssessmentType::from_str(assessment_type.as_str());
-        match feedback_type {
-            Ok(t) => Ok((employee_name, t)),
-            Err(err) => Err(err),
-        }
+        )));
+    }
+
+    let feedback_type = InAssessmentType::from_str(assessment_type.as_str());
+    match feedback_type {
+        Ok(t) => Ok((employee_name, t)),
+        Err(err) => Err(Box::new(err)),
     }
 }
