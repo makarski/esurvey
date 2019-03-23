@@ -4,9 +4,7 @@ use std::env::args;
 use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::io;
-use std::io::Error as io_err;
-use std::io::ErrorKind as io_err_kind;
+use std::io::{stdin, stdout, Error as io_err, ErrorKind as io_err_kind, Write};
 use std::str::FromStr;
 
 const SelfAssessmentStr: &str = "self-assessment";
@@ -118,6 +116,8 @@ fn main() {
     let (employee_name, feedback_type) = parse_flags().expect("could not parse input flags");
     let mut config_questions = feedback_type.questions_config().into_iter();
 
+    let mut writer = stdout();
+
     let mut questions: Vec<EmployeeSkill> = vec![
         EmployeeSkill::new(Skill::Adaptability, config_questions.next().unwrap()),
         EmployeeSkill::new(Skill::Attitude, config_questions.next().unwrap()),
@@ -136,15 +136,15 @@ fn main() {
         EmployeeSkill::new(Skill::TechExpertise, config_questions.next().unwrap()),
     ];
 
-    let mut rdr = csv::Reader::from_reader(io::stdin());
+    let mut rdr = csv::Reader::from_reader(stdin());
     for (index, colleague) in rdr.records().enumerate() {
         let feedback = colleague.expect("could not read colleague's feedback");
         let mut feedback_iter = feedback.iter().enumerate();
 
-        println!(">> scanning response: {}\n", index);
+        writeln!(writer, ">> scanning response: {}\n", index).unwrap();
 
         for q in &mut questions {
-            println!("scanning '{}'...", q.name);
+            writeln!(writer, "scanning '{}'...", q.name).unwrap();
             let mut counter: u32 = 0;
 
             loop {
@@ -187,7 +187,7 @@ fn main() {
 
     wrt.flush().unwrap();
 
-    println!("\ngenerated file: {}", target_filename);
+    writeln!(writer, "\ngenerated file: {}", target_filename).unwrap();
 }
 
 fn parse_flags() -> Result<(String, InAssessmentType), Box<dyn std_err>> {
