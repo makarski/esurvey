@@ -1,6 +1,5 @@
 extern crate csv;
 
-use std::cell::RefCell;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::io;
@@ -84,7 +83,7 @@ impl fmt::Display for Skill {
 struct EmployeeSkill {
     name: Skill,
     questions: u32,
-    grades: RefCell<Vec<u32>>,
+    grades: Vec<u32>,
 }
 
 impl EmployeeSkill {
@@ -92,12 +91,16 @@ impl EmployeeSkill {
         EmployeeSkill {
             name: n,
             questions: q,
-            grades: RefCell::new(Vec::with_capacity(q as usize)),
+            grades: Vec::with_capacity(q as usize),
         }
     }
 
+    fn add_grade(&mut self, v: u32) {
+        self.grades.push(v)
+    }
+
     fn avg(&self) -> f32 {
-        self.grades.borrow().iter().sum::<u32>() as f32 / self.grades.borrow().len() as f32
+        self.grades.iter().sum::<u32>() as f32 / self.grades.len() as f32
     }
 }
 
@@ -111,7 +114,7 @@ fn main() {
     let (employee_name, feedback_type) = parse_flags().expect("could not parse input flags");
     let mut config_questions = feedback_type.questions_config().into_iter();
 
-    let questions: Vec<EmployeeSkill> = vec![
+    let mut questions: Vec<EmployeeSkill> = vec![
         EmployeeSkill::new(Skill::Adaptability, config_questions.next().unwrap()),
         EmployeeSkill::new(Skill::Attitude, config_questions.next().unwrap()),
         EmployeeSkill::new(Skill::Communication, config_questions.next().unwrap()),
@@ -136,7 +139,7 @@ fn main() {
 
         println!(">> scanning response: {}\n", index);
 
-        for q in &questions {
+        for q in &mut questions {
             println!("scanning '{}'...", q.name);
             let mut counter: u32 = 0;
 
@@ -151,7 +154,7 @@ fn main() {
                 }
 
                 let grade: u32 = answer.parse().expect("could not parse grade");
-                q.grades.borrow_mut().push(grade);
+                q.add_grade(grade);
 
                 // break to the next category
                 counter = counter + 1;
