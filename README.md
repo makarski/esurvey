@@ -1,18 +1,20 @@
-Usage
+Setup
 -----
 
-##### MacOS X 
+1. Prerequisite: the feedback form results have been exported to a Google Spreadsheet.
+   1. [ ] **TODO** check [Apps Script API](https://developers.google.com/apps-script/api/) to automatically export data to google spreadsheets.
+2. The Spreadsheet **MUST** have two sheets (tabs) named `team-feedback`, `self-assessment`.
+3. You have configured an app from [Google API Console](https://console.developers.google.com/apis/credentials):
+   1. Enter the application name
+   2. Set type to `Other`
+   3. Download json configuration file
+   4. Set `OAUTH_CFG_FILE` env var to hold the path to the downloaded `JSON` file, i.e. `export OAUTH_CFG_FILE=/mypath/oauth-credentials.json`
 
+Running
+-------
 
-- Test Run: `make`
-
-- Generate file `peter_team-feedback.csv` with average values from the input
+The following command will read the data from the spreadsheet and append each of the sheets (`team-feedback`, `self-assessment`) with the processed and categorised summary
 
 ```sh
-./probation-csv -name=peter -type=team-feedback < sample_input.csv
-```
-
-- Generate file `john_self-assessment.csv` with average values from the input
-```sh
-./probation-csv -name=john -type=self-assessment < sample_input.csv
+OAUTH_CFG_FILE=/mypath/credentials.json probation-csv -id={google_spreadsheet_id}
 ```
