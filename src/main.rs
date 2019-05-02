@@ -1,12 +1,21 @@
-extern crate csv;
+#![allow(dead_code)]
 
+extern crate rust_google_oauth2 as gauth;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
+use std::env;
 use std::env::args;
 use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::io::{stdin, stdout, Error as io_err, ErrorKind as io_err_kind, Write};
-use std::path::Path;
+use std::io::{stdin, Error as io_err, ErrorKind as io_err_kind};
+use std::path::PathBuf;
 use std::str::FromStr;
+
+mod sheets;
 
 const SELF_ASSESSMENT_STR: &str = "self-assessment";
 const TEAM_FEEDBACK_STR: &str = "team-feedback";
@@ -60,7 +69,7 @@ impl FromStr for AssessmentKind {
             SELF_ASSESSMENT_STR => Ok(AssessmentKind::SelfAssessment),
             _ => Err(io_err::new(
                 io_err_kind::InvalidInput,
-                "InAssessemntType parse error. valid types: `team-feedback`, `self-assessment`",
+                "AssessemntKind parse error. valid types: `team-feedback`, `self-assessment`",
             )),
         }
     }
@@ -139,107 +148,139 @@ impl Display for EmployeeSkill {
     }
 }
 
+fn handle_auth(consent_uri: String) -> Result<String, Box<dyn std::error::Error>> {
+    println!("> open the link in browser\n\n{}\n", consent_uri);
+    println!("> enter the auth. code\n");
+
+    let mut auth_code = String::new();
+    stdin().read_line(&mut auth_code)?;
+
+    Ok(auth_code)
+}
+
 fn main() {
-    let mut writer = stdout();
+    let spreadsheet_id = parse_flags().expect("could not parse input flags");
+    println!("entered id: {}", spreadsheet_id);
 
-    let (empl_name, feedback_kind) = parse_flags().expect("could not parse input flags");
-    let cfg_questions = feedback_kind.config().into_iter();
+    let crd_path = env::var("OAUTH_CFG_FILE").expect("failed to retrieve OAUTH_CFG_FILE from env");
+    let auth_client = gauth::Auth::new(
+        "probation-check",
+        vec![
+            "https://www.googleapis.com/auth/drive".to_owned(),
+            "https://www.googleapis.com/auth/drive.readonly".to_owned(),
+            "https://www.googleapis.com/auth/drive.file".to_owned(),
+            "https://www.googleapis.com/auth/spreadsheets".to_owned(),
+            "https://www.googleapis.com/auth/spreadsheets.readonly".to_owned(),
+        ],
+        PathBuf::from(crd_path),
+    );
 
-    let mut questions: Vec<EmployeeSkill> = Vec::with_capacity(cfg_questions.len());
-    for (skill, question_count) in cfg_questions {
-        questions.push(EmployeeSkill::new(skill, question_count));
-    }
+    let token = auth_client
+        .access_token(handle_auth)
+        .expect("failed to retrieve access token");
 
-    let mut rdr = csv::Reader::from_reader(stdin());
+    let client = sheets::Client::new();
 
-    for (index, colleague) in rdr.records().enumerate() {
-        let feedback = colleague.expect("could not read colleague's feedback");
-        let mut feedback_iter = feedback.iter().enumerate();
+    let s = client
+        .get_spreadsheet(&token.access_token, &spreadsheet_id)
+        .expect("failed to retrieve spreadsheet info");
 
-        writeln!(writer, ">> scanning response: {}\n", index).unwrap();
+    for sheet in s.sheets.into_iter() {
+        println!("> reading data from sheet tab: {}", sheet.properties.title);
 
-        for q in &mut questions {
-            writeln!(writer, "scanning '{}'...", q.name).unwrap();
-            let mut counter: u32 = 0;
+        let sheet_title = sheet.properties.title;
 
-            loop {
-                let (index, answer) = feedback_iter
-                    .next()
-                    .expect("could not retrieve the next value");
+        let spreadsheet = client
+            .get_batch_values(
+                &token.access_token,
+                &spreadsheet_id,
+                vec![format!("{}", &sheet_title)],
+            )
+            .expect("failed to retrieve speadsheet data");
 
-                if index < 2 {
-                    // skip email and timestamp fields
-                    continue;
-                }
+        for sheet_value in spreadsheet.value_ranges.into_iter() {
+            println!("scanning spreadsheet range: {}", sheet_value.range);
 
-                let grade: u32 = answer.parse().expect("could not parse grade");
-                q.add_grade(grade);
+            let feedback_kind = AssessmentKind::from_str(&sheet_title)
+                .expect("failed to detect feedback kind based on sheet name");
+            let cfg_questions = feedback_kind.config().into_iter();
 
-                // break to the next category
-                counter = counter + 1;
-                if counter == q.questions {
-                    break;
+            let mut questions: Vec<EmployeeSkill> = Vec::with_capacity(cfg_questions.len());
+            for (skill, question_count) in cfg_questions {
+                questions.push(EmployeeSkill::new(skill, question_count));
+            }
+
+            let mut answers = sheet_value.values.into_iter().skip(2);
+
+            for q in &mut questions {
+                let mut counter: u32 = 0;
+
+                loop {
+                    let per_category = &answers.next().unwrap();
+                    let mut per_category = per_category.into_iter();
+
+                    println!(">> scanning '{}: {}'", q.name, per_category.next().unwrap());
+
+                    for grade_str in per_category {
+                        let grade: u32 = grade_str.parse().expect("could not parse grade");
+                        q.add_grade(grade);
+                    }
+
+                    counter = counter + 1;
+                    if counter == q.questions {
+                        break;
+                    }
                 }
             }
+
+            save_to_drive(
+                &client,
+                &token.access_token,
+                &spreadsheet_id,
+                format!("{}!A1", &sheet_title),
+                &questions,
+            );
         }
     }
-
-    let filename = out_filename(&empl_name, feedback_kind);
-    save_to_file(&filename, &questions).expect("failed to save output file");
-
-    writeln!(writer, "\ngenerated file: {}", filename).unwrap();
 }
 
-fn out_filename(empl_name: &str, fdb_type: AssessmentKind) -> String {
-    format!("{}_{}.csv", empl_name, fdb_type.to_string())
-}
-
-fn save_to_file<P: AsRef<Path>>(
-    filename: P,
+fn save_to_drive(
+    client: &sheets::Client,
+    token: &str,
+    spreadsheet_id: &str,
+    range: String,
     questions: &Vec<EmployeeSkill>,
-) -> Result<(), Box<dyn std_err>> {
-    let mut wrt = csv::WriterBuilder::new().from_path(&filename)?;
+) {
+    let mut spreadsheet_values = sheets::SpreadsheetValueRange {
+        range: range.clone(),
+        major_dimension: "COLUMNS".to_owned(),
+        values: Vec::with_capacity(questions.len() as usize),
+    };
 
-    for i in 0..2 {
-        for skill in questions {
-            if i == 0 {
-                wrt.write_field(skill.name.to_string())?;
-                continue;
-            }
-            wrt.write_field(format!("{}", skill.avg()))?;
-        }
-        wrt.write_record(None::<&[u8]>)?;
+    for question in questions {
+        spreadsheet_values.add_value(vec![question.name.to_string(), question.avg().to_string()])
     }
 
-    wrt.flush()?;
-
-    Ok(())
+    client
+        .append_values(token, spreadsheet_id.to_owned(), range, &spreadsheet_values)
+        .expect("could not update google sheet values");
 }
 
-fn parse_flags() -> Result<(String, AssessmentKind), Box<dyn std_err>> {
-    let mut empl_name = String::new();
-    let mut assessment_type = String::new();
+fn parse_flags() -> Result<String, Box<dyn std_err>> {
+    let mut spreadsheet_id = String::new();
 
     for arg in args().collect::<Vec<String>>() {
-        if arg.contains("-name=") {
-            empl_name = arg.trim_start_matches("-name=").parse::<String>()?;
-        }
-
-        if arg.contains("-type=") {
-            assessment_type = arg.trim_start_matches("-type=").parse::<String>()?;
+        if arg.contains("-id=") {
+            spreadsheet_id = arg.trim_start_matches("-id=").parse()?;
         }
     }
 
-    if empl_name.is_empty() || assessment_type.is_empty() {
+    if spreadsheet_id.is_empty() {
         return Err(Box::new(io_err::new(
             io_err_kind::InvalidInput,
-            "empty `-name` or `-type` flags provided",
+            "spreadsheet_id is not provided",
         )));
     }
 
-    let feedback_kind = AssessmentKind::from_str(assessment_type.as_str());
-    match feedback_kind {
-        Ok(t) => Ok((empl_name, t)),
-        Err(err) => Err(Box::new(err)),
-    }
+    Ok(spreadsheet_id)
 }
