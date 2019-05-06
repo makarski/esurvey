@@ -13,7 +13,7 @@ Setup
 Running
 -------
 
-The following command will read the data from the spreadsheet and append each of the sheets (`team-feedback`, `self-assessment`) with the processed and categorised summary
+The following command will read the data from the Spreadsheet and create a new Sheet (tab) `Chart and Summary` with processed and categorised data
 
 ```sh
 OAUTH_CFG_FILE=/mypath/credentials.json probation-csv -id={google_spreadsheet_id}
