@@ -185,7 +185,9 @@ fn main() {
         .get_spreadsheet(&token.access_token, &spreadsheet_id)
         .expect("failed to retrieve spreadsheet info");
 
-    for sheet in s.sheets.into_iter() {
+    create_summary_sheet(&client, &token.access_token, &spreadsheet_id);
+
+    for (sheet_index, sheet) in s.sheets.into_iter().enumerate() {
         println!("> reading data from sheet tab: {}", sheet.properties.title);
 
         let sheet_title = sheet.properties.title;
@@ -237,32 +239,77 @@ fn main() {
                 &client,
                 &token.access_token,
                 &spreadsheet_id,
-                format!("{}!A1", &sheet_title),
                 &questions,
+                &feedback_kind,
+                sheet_index,
             );
         }
     }
+}
+
+fn create_summary_sheet(client: &sheets::Client, token: &str, spreadsheet_id: &str) {
+    let batch_update = sheets::spreadsheets_batch_update::SpreadsheetBatchUpdate {
+        requests: vec![sheets::spreadsheets_batch_update::Request {
+            add_sheet: Some(sheets::spreadsheets_batch_update::AddSheetRequest {
+                properties: sheets::SheetProperties {
+                    sheet_id: None,
+                    title: "Chart and Summary".to_owned(),
+                    index: None,
+                    sheet_type: None,
+                    grid_properties: None,
+                },
+            }),
+        }],
+        include_spreadsheet_in_response: false,
+        response_ranges: Vec::new(),
+        response_include_grid_data: false,
+    };
+
+    client
+        .batch_update_spreadsheet(token, spreadsheet_id, &batch_update)
+        .expect("could not create a summary spreadsheet tab");
 }
 
 fn save_to_drive(
     client: &sheets::Client,
     token: &str,
     spreadsheet_id: &str,
-    range: String,
     questions: &Vec<EmployeeSkill>,
+    feedback_kind: &AssessmentKind,
+    sheet_index: usize,
 ) {
-    let mut spreadsheet_values = sheets::SpreadsheetValueRange {
-        range: range.clone(),
+    let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
+        range: "Chart and Summary".to_owned(),
         major_dimension: "COLUMNS".to_owned(),
-        values: Vec::with_capacity(questions.len() as usize),
+        values: Vec::with_capacity(questions.len() as usize + 1),
     };
 
+    let generate_col_value = |sheet_index: usize, vals: Vec<String>| -> Vec<String> {
+        if sheet_index == 0 {
+            return vals;
+        }
+        return vals[1..].to_vec();
+    };
+
+    spreadsheet_values.add_value(generate_col_value(
+        sheet_index,
+        vec!["".to_owned(), feedback_kind.to_string()],
+    ));
+
     for question in questions {
-        spreadsheet_values.add_value(vec![question.name.to_string(), question.avg().to_string()])
+        spreadsheet_values.add_value(generate_col_value(
+            sheet_index,
+            vec![question.name.to_string(), question.avg().to_string()],
+        ))
     }
 
     client
-        .append_values(token, spreadsheet_id.to_owned(), range, &spreadsheet_values)
+        .append_values(
+            token,
+            spreadsheet_id.to_owned(),
+            "Chart and Summary".to_owned(),
+            &spreadsheet_values,
+        )
         .expect("could not update google sheet values");
 }
 

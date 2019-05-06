@@ -71,13 +71,13 @@ pub struct Sheet {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SheetProperties {
-    sheet_id: u64,
+    pub sheet_id: Option<u64>,
     pub title: String,
-    index: u64,
-    sheet_type: SheetType,
+    pub index: Option<u64>,
+    pub sheet_type: Option<SheetType>,
 
     // #[serde(skip)]
-    grid_properties: Option<GridProperties>,
+    pub grid_properties: Option<GridProperties>,
 
     // hidden: bool,
 
@@ -118,27 +118,6 @@ pub struct NamedRange {}
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperMetadata {}
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SpreadsheetValues {
-    pub spreadsheet_id: String,
-    pub value_ranges: Vec<SpreadsheetValueRange>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SpreadsheetValueRange {
-    pub range: String,
-    pub major_dimension: String, // todo: change to enum
-    pub values: Vec<Vec<String>>,
-}
-
-impl SpreadsheetValueRange {
-    pub fn add_value(&mut self, v: Vec<String>) {
-        self.values.push(v)
-    }
-}
-
 pub struct Client {
     _http_client: reqwest::Client,
 }
@@ -167,6 +146,31 @@ impl Client {
 
         match resp.status().is_success() {
             true => Ok(resp.json::<Spreadsheet>()?),
+            _ => panic!(resp.text()?), // todo: change to return the error
+        }
+    }
+
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
+    // POST https://sheets.googleapis.com/v4/spreadsheets/spreadsheetId:batchUpdate
+    pub fn batch_update_spreadsheet<S: AsRef<str>>(
+        &self,
+        token: S,
+        spreadsheet_id: S,
+        req: &spreadsheets_batch_update::SpreadsheetBatchUpdate,
+    ) -> Result<(), Box<dyn Error>> {
+        let url = format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate?access_token={}",
+            spreadsheet_id.as_ref(),
+            token.as_ref()
+        );
+        let mut resp = self
+            ._http_client
+            .post(url.as_str())
+            .body(serde_json::to_vec(req)?)
+            .send()?;
+
+        match resp.status().is_success() {
+            true => Ok(()),
             _ => panic!(resp.text()?),
         }
     }
@@ -178,7 +182,7 @@ impl Client {
         token: S,
         spreadsheet_id: S,
         ranges: Vec<String>,
-    ) -> Result<SpreadsheetValues, Box<dyn Error>> {
+    ) -> Result<spreadsheets_values::SpreadsheetValues, Box<dyn Error>> {
         let range_query_str = ranges[..].join("&ranges=");
 
         let url = format!(
@@ -192,7 +196,7 @@ impl Client {
             ._http_client
             .get(url.as_str())
             .send()?
-            .json::<SpreadsheetValues>()?)
+            .json::<spreadsheets_values::SpreadsheetValues>()?)
     }
 
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
@@ -202,7 +206,7 @@ impl Client {
         token: S,
         spreadsheet_id: String,
         range: String,
-        v: &SpreadsheetValueRange,
+        v: &spreadsheets_values::SpreadsheetValueRange,
     ) -> Result<(), Box<dyn Error>> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}?access_token={}&valueInputOption=USER_ENTERED",
@@ -233,7 +237,7 @@ impl Client {
         token: S,
         spreadsheet_id: String,
         range: String,
-        v: &SpreadsheetValueRange,
+        v: &spreadsheets_values::SpreadsheetValueRange,
     ) -> Result<(), Box<dyn Error>> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}:append?access_token={}&valueInputOption=USER_ENTERED",
@@ -255,5 +259,53 @@ impl Client {
                 resp.text()?,
             ))),
         }
+    }
+}
+
+mod spreadsheets_sheets {}
+
+pub mod spreadsheets_values {
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SpreadsheetValues {
+        pub spreadsheet_id: String,
+        pub value_ranges: Vec<SpreadsheetValueRange>,
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SpreadsheetValueRange {
+        pub range: String,
+        pub major_dimension: String, // todo: change to enum
+        pub values: Vec<Vec<String>>,
+    }
+
+    impl SpreadsheetValueRange {
+        pub fn add_value(&mut self, v: Vec<String>) {
+            self.values.push(v)
+        }
+    }
+}
+
+pub mod spreadsheets_batch_update {
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct SpreadsheetBatchUpdate {
+        pub requests: Vec<Request>,
+        pub include_spreadsheet_in_response: bool,
+        pub response_ranges: Vec<String>,
+        pub response_include_grid_data: bool,
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Request {
+        pub add_sheet: Option<AddSheetRequest>,
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct AddSheetRequest {
+        pub properties: super::SheetProperties,
     }
 }
