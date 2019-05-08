@@ -185,7 +185,7 @@ fn main() {
         .get_spreadsheet(&token.access_token, &spreadsheet_id)
         .expect("failed to retrieve spreadsheet info");
 
-    create_summary_sheet(&client, &token.access_token, &spreadsheet_id);
+    let summary_sheet_id = create_summary_sheet(&client, &token.access_token, &spreadsheet_id);
 
     for (sheet_index, sheet) in s.sheets.into_iter().enumerate() {
         println!("> reading data from sheet tab: {}", sheet.properties.title);
@@ -245,29 +245,143 @@ fn main() {
             );
         }
     }
+
+    add_summary_chart(
+        &client,
+        &token.access_token,
+        &spreadsheet_id,
+        summary_sheet_id,
+    );
 }
 
-fn create_summary_sheet(client: &sheets::Client, token: &str, spreadsheet_id: &str) {
-    let batch_update = sheets::spreadsheets_batch_update::SpreadsheetBatchUpdate {
-        requests: vec![sheets::spreadsheets_batch_update::Request {
-            add_sheet: Some(sheets::spreadsheets_batch_update::AddSheetRequest {
-                properties: sheets::SheetProperties {
-                    sheet_id: None,
-                    title: "Chart and Summary".to_owned(),
-                    index: None,
-                    sheet_type: None,
-                    grid_properties: None,
+
+use sheets::basic_chart::*;
+use sheets::spreadsheets::{ChartSpec, EmbeddedChart, EmbeddedObjectPosition};
+use sheets::spreadsheets_batch_update::*;
+
+// https://developers.google.com/sheets/api/samples/charts#add_a_column_chart
+fn add_summary_chart(client: &sheets::Client, token: &str, spreadsheet_id: &str, sheet_id: u64) {
+    let chart_spec = ChartSpec {
+        title: Some("Team Feedback and Self-Assessment SCRIPT".to_owned()),
+        basic_chart: Some(BasicChartSpec {
+            chart_type: BasicChartType::Column,
+            legend_position: BasicChartLegendPosition::RightLegend,
+            axis: Vec::new(),
+            domains: vec![BasicChartDomain {
+                domain: ChartData {
+                    source_range: ChartSourceRange {
+                        sources: vec![GridRange {
+                            sheet_id: sheet_id,
+                            start_row_index: 0,
+                            end_row_index: 1,
+                            start_column_index: 0,
+                            end_column_index: 13,
+                        }],
+                    },
+
+                },
+                reversed: false,
+            }],
+            series: vec![
+                BasicChartSeries {
+                    series: ChartData {
+                        source_range: ChartSourceRange {
+                            sources: vec![GridRange {
+                                sheet_id: sheet_id,
+                                start_row_index: 1,
+                                end_row_index: 2,
+                                start_column_index: 0,
+                                end_column_index: 13,
+                            }],
+                        },
+                    },
+                    target_axis: BasicChartAxisPosition::LeftAxis,
+                    chart_type: Some(BasicChartType::Column),
+                    line_style: None,
+                    color: None,
+                },
+                BasicChartSeries {
+                    series: ChartData {
+                        source_range: ChartSourceRange {
+                            sources: vec![GridRange {
+                                sheet_id: sheet_id,
+                                start_row_index: 2,
+                                end_row_index: 3,
+                                start_column_index: 0,
+                                end_column_index: 13,
+                            }],
+                        },
+                    },
+                    target_axis: BasicChartAxisPosition::LeftAxis,
+                    chart_type: Some(BasicChartType::Column),
+                    line_style: None,
+                    color: None,
+                },
+            ],
+            header_count: 1,
+            three_dimensional: false,
+            interpolate_nulls: false,
+            stacked_type: BasicChartStackedType::NotStacked,
+            line_smoothing: false,
+            compare_mode: BasicChartCompareMode::Category,
+        }),
+        ..Default::default()
+    };
+
+    let chart_req = SpreadsheetBatchUpdate {
+        requests: vec![Request {
+            add_sheet: None,
+            add_chart: Some(AddChartRequest {
+                chart: EmbeddedChart {
+                    chart_id: None,
+                    spec: chart_spec,
+                    position: EmbeddedObjectPosition {
+                        new_sheet: true,
+                        ..Default::default()
+                    },
                 },
             }),
         }],
+        response_ranges: Vec::new(),
+        response_include_grid_data: false,
         include_spreadsheet_in_response: false,
+    };
+
+    client
+        .batch_update_spreadsheet(token, spreadsheet_id, &chart_req)
+        .expect("failed to add chart");
+}
+
+fn create_summary_sheet(client: &sheets::Client, token: &str, spreadsheet_id: &str) -> u64 {
+    let batch_update = sheets::spreadsheets_batch_update::SpreadsheetBatchUpdate {
+        requests: vec![sheets::spreadsheets_batch_update::Request {
+            add_sheet: Some(sheets::spreadsheets_batch_update::AddSheetRequest {
+                properties: sheets::spreadsheets::SheetProperties {
+                    title: "Chart and Summary".to_owned(),
+                    ..Default::default()
+                },
+            }),
+            add_chart: None,
+        }],
+        include_spreadsheet_in_response: true,
         response_ranges: Vec::new(),
         response_include_grid_data: false,
     };
 
-    client
+    let u = client
         .batch_update_spreadsheet(token, spreadsheet_id, &batch_update)
-        .expect("could not create a summary spreadsheet tab");
+        .map(|response_body| {
+            // todo: find a better way to deal with the borrow checker
+
+            let mut sheet_id: u64 = 0;
+            for reply in response_body.replies.into_iter().take(1) {
+                sheet_id = reply.add_sheet.unwrap().properties.sheet_id.unwrap();
+            }
+
+            sheet_id
+        });
+
+    u.expect("could not retrieve sheet id")
 }
 
 fn save_to_drive(
