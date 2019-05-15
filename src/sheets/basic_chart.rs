@@ -64,7 +64,6 @@ pub enum BasicChartLegendPosition {
     NoLegend,
 }
 
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicChartAxis {

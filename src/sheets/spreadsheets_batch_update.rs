@@ -46,23 +46,22 @@ pub struct Response {
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/response#Response
 
     // Union field kind can be only one of the following:
-
-    /// A reply from adding a sheet. 
+    /// A reply from adding a sheet.
     pub add_sheet: Option<AddSheetResponse>,
-    /// A reply from adding a chart. 
-    pub add_chart: Option<AddChartResponse>
+    /// A reply from adding a chart.
+    pub add_chart: Option<AddChartResponse>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-/// The result of adding a sheet. 
+/// The result of adding a sheet.
 pub struct AddSheetResponse {
-    /// The properties of the newly added sheet. 
+    /// The properties of the newly added sheet.
     pub properties: super::spreadsheets::SheetProperties,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-/// The result of adding a chart to a spreadsheet. 
+/// The result of adding a chart to a spreadsheet.
 pub struct AddChartResponse {
-    /// The newly added chart. 
-    pub chart: super::spreadsheets::EmbeddedChart
+    /// The newly added chart.
+    pub chart: super::spreadsheets::EmbeddedChart,
 }

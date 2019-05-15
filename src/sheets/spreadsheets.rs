@@ -129,7 +129,6 @@ pub struct Color {
     /// This uses a wrapper message rather than a simple float scalar so that it is possible to distinguish between a default value and the value being unset.
     /// If omitted, this color object is to be rendered as a solid color (as if the alpha value had been explicitly given with a value of 1.0).
     pub alpha: f64,
-
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -212,7 +211,6 @@ pub enum ChartHiddenDimensionStrategy {
     ShowAll,
 }
 
-
 #[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddedObjectPosition {
@@ -250,5 +248,4 @@ pub struct GridCoordinate {
     pub row_index: u64,
     // The column index of the coordinate.
     pub column_index: u64,
-
 }
