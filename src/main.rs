@@ -41,6 +41,7 @@ impl AssessmentKind {
                 (Skill::SelfImprovement, 2),
                 (Skill::Teamwork, 3),
                 (Skill::TechExpertise, 2),
+                (Skill::FreeText, 4),
             ],
             AssessmentKind::TeamFeedback => vec![
                 (Skill::Adaptability, 2),
@@ -55,6 +56,7 @@ impl AssessmentKind {
                 (Skill::SelfImprovement, 2),
                 (Skill::Teamwork, 2),
                 (Skill::TechExpertise, 2),
+                (Skill::FreeText, 5),
             ],
         }
     }
@@ -97,6 +99,7 @@ enum Skill {
     SelfImprovement,
     Teamwork,
     TechExpertise,
+    FreeText,
 }
 
 impl Display for Skill {
@@ -114,6 +117,7 @@ impl Display for Skill {
             Skill::SelfImprovement => write!(f, "Self-Improvement"),
             Skill::Teamwork => write!(f, "Teamwork"),
             Skill::TechExpertise => write!(f, "Tech. Expertise"),
+            Skill::FreeText => write!(f, "Free Text Answer"),
         }
     }
 }
@@ -122,14 +126,23 @@ struct EmployeeSkill {
     name: Skill,
     questions: u32,
     grades: Vec<u32>,
+    texts: Vec<String>,
 }
 
 impl EmployeeSkill {
-    fn new(n: Skill, q: u32) -> EmployeeSkill {
+    fn new(name: Skill, q: u32) -> EmployeeSkill {
         EmployeeSkill {
-            name: n,
+            name: name,
             questions: q,
             grades: Vec::with_capacity(q as usize),
+            texts: Vec::with_capacity(q as usize),
+        }
+    }
+
+    fn add_response(&mut self, v: &str) {
+        match self.name {
+            Skill::FreeText => self.texts.push(v.to_owned()),
+            _ => self.add_grade(v.parse::<u32>().expect("could not parse the grade")),
         }
     }
 
@@ -140,11 +153,18 @@ impl EmployeeSkill {
     fn avg(&self) -> f32 {
         self.grades.iter().sum::<u32>() as f32 / self.grades.len() as f32
     }
+
+    fn txt(&self) -> String {
+        self.texts.join("\n")
+    }
 }
 
 impl Display for EmployeeSkill {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.avg())
+        match self.name {
+            Skill::FreeText => write!(f, "{}:\n {}", self.name, self.texts.join("\n")),
+            _ => write!(f, "{}: {}", self.name, self.avg()),
+        }
     }
 }
 
@@ -221,11 +241,18 @@ fn main() {
                     let per_category = &answers.next().unwrap();
                     let mut per_category = per_category.into_iter();
 
-                    println!(">> scanning '{}: {}'", q.name, per_category.next().unwrap());
+                    let question_stmt = per_category.next().unwrap();
+                    println!(">> scanning '{}: {}'", q.name, &question_stmt);
+
+                    match q.name {
+                        Skill::FreeText => {
+                            q.add_response(format!("\nCategory: {}\n", question_stmt).as_str())
+                        }
+                        _ => (),
+                    }
 
                     for grade_str in per_category {
-                        let grade: u32 = grade_str.parse().expect("could not parse grade");
-                        q.add_grade(grade);
+                        q.add_response(grade_str);
                     }
 
                     counter = counter + 1;
@@ -234,6 +261,8 @@ fn main() {
                     }
                 }
             }
+
+            println!(">>> uploading to drive!");
 
             save_to_drive(
                 &client,
@@ -253,7 +282,6 @@ fn main() {
         summary_sheet_id,
     );
 }
-
 
 use sheets::basic_chart::*;
 use sheets::spreadsheets::{ChartSpec, EmbeddedChart, EmbeddedObjectPosition};
@@ -278,7 +306,6 @@ fn add_summary_chart(client: &sheets::Client, token: &str, spreadsheet_id: &str,
                             end_column_index: 13,
                         }],
                     },
-
                 },
                 reversed: false,
             }],
@@ -411,10 +438,17 @@ fn save_to_drive(
     ));
 
     for question in questions {
+        let mut response_cell: String;
+
+        match question.name {
+            Skill::FreeText => response_cell = question.txt(),
+            _ => response_cell = question.avg().to_string(),
+        }
+
         spreadsheet_values.add_value(generate_col_value(
             sheet_index,
-            vec![question.name.to_string(), question.avg().to_string()],
-        ))
+            vec![question.name.to_string(), response_cell],
+        ));
     }
 
     client
