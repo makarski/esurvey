@@ -4,6 +4,7 @@ use crate::sheets;
 use sheets::basic_chart::*;
 use sheets::spreadsheets::{ChartSpec, EmbeddedChart, EmbeddedObjectPosition};
 use sheets::spreadsheets_batch_update::*;
+use sheets::spreadsheets_values;
 
 pub fn save_to_drive(
     client: &sheets::Client,
@@ -11,11 +12,12 @@ pub fn save_to_drive(
     spreadsheet_id: &str,
     questions: &Vec<EmployeeSkill>,
     feedback_kind: &AssessmentKind,
+    major_dimension: spreadsheets_values::MajorDimension,
     sheet_index: usize,
 ) {
     let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
         range: "Chart and Summary".to_owned(),
-        major_dimension: "COLUMNS".to_owned(),
+        major_dimension: major_dimension,
         values: Vec::with_capacity(questions.len() as usize + 1),
     };
 
@@ -33,7 +35,11 @@ pub fn save_to_drive(
 
     for question in questions {
         let response_cell: String = match question.name {
-            Skill::FreeText => question.txt(),
+            Skill::NewSkill
+            | Skill::LearningOpportunity
+            | Skill::Strengths
+            | Skill::Opportunities
+            | Skill::FreeText => question.txt(),
             _ => question.avg().to_string(),
         };
 
@@ -54,7 +60,12 @@ pub fn save_to_drive(
 }
 
 // https://developers.google.com/sheets/api/samples/charts#add_a_column_chart
-pub fn add_summary_chart(client: &sheets::Client, token: &str, spreadsheet_id: &str, sheet_id: u64) {
+pub fn add_summary_chart(
+    client: &sheets::Client,
+    token: &str,
+    spreadsheet_id: &str,
+    sheet_id: u64,
+) {
     let chart_spec = ChartSpec {
         title: Some("Team Feedback and Self-Assessment SCRIPT".to_owned()),
         basic_chart: Some(BasicChartSpec {
