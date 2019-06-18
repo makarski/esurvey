@@ -27,7 +27,10 @@ impl AssessmentKind {
                 (Skill::SelfImprovement, 2),
                 (Skill::Teamwork, 3),
                 (Skill::TechExpertise, 2),
-                (Skill::FreeText, 4),
+                (Skill::NewSkill, 1),
+                (Skill::LearningOpportunity, 1),
+                (Skill::Strengths, 1),
+                (Skill::Opportunities, 1),
             ],
             AssessmentKind::TeamFeedback => vec![
                 (Skill::Adaptability, 2),
@@ -42,7 +45,11 @@ impl AssessmentKind {
                 (Skill::SelfImprovement, 2),
                 (Skill::Teamwork, 2),
                 (Skill::TechExpertise, 2),
-                (Skill::FreeText, 5),
+                (Skill::NewSkill, 1),
+                (Skill::LearningOpportunity, 1),
+                (Skill::Strengths, 1),
+                (Skill::Opportunities, 1),
+                (Skill::FreeText, 1),
             ],
         }
     }
@@ -85,6 +92,10 @@ pub enum Skill {
     SelfImprovement,
     Teamwork,
     TechExpertise,
+    NewSkill,
+    LearningOpportunity,
+    Strengths,
+    Opportunities,
     FreeText,
 }
 
@@ -103,7 +114,14 @@ impl Display for Skill {
             Skill::SelfImprovement => write!(f, "Self-Improvement"),
             Skill::Teamwork => write!(f, "Teamwork"),
             Skill::TechExpertise => write!(f, "Tech. Expertise"),
-            Skill::FreeText => write!(f, "Free Text Answer"),
+
+            // Textual Feedback
+            Skill::NewSkill => write!(f, "New Skill"),
+            Skill::LearningOpportunity => write!(f, "Skill to Acquire"),
+            Skill::Strengths => write!(f, "Strengths"),
+            Skill::Opportunities => write!(f, "Improvement Opportunities"),
+
+            Skill::FreeText => write!(f, "Free Form Feedback"),
         }
     }
 }
@@ -126,8 +144,13 @@ impl EmployeeSkill {
     }
 
     pub fn add_response(&mut self, v: &str) {
+        println!("adding response: {}", v.to_owned());
         match self.name {
-            Skill::FreeText => self.texts.push(v.to_owned()),
+            Skill::NewSkill
+            | Skill::LearningOpportunity
+            | Skill::Strengths
+            | Skill::Opportunities
+            | Skill::FreeText => self.texts.push(v.to_owned()),
             _ => self.add_grade(v.parse::<u32>().expect("could not parse the grade")),
         }
     }
@@ -148,7 +171,11 @@ impl EmployeeSkill {
 impl Display for EmployeeSkill {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.name {
-            Skill::FreeText => write!(f, "{}:\n {}", self.name, self.texts.join("\n")),
+            Skill::NewSkill
+            | Skill::LearningOpportunity
+            | Skill::Strengths
+            | Skill::Opportunities
+            | Skill::FreeText => write!(f, "{}:\n {}", self.name, self.texts.join("\n")),
             _ => write!(f, "{}: {}", self.name, self.avg()),
         }
     }
