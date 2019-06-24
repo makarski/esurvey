@@ -12,45 +12,53 @@ pub enum AssessmentKind {
 }
 
 impl AssessmentKind {
-    pub fn config(&self) -> Vec<(Skill, u32)> {
+    pub fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
         match self {
-            AssessmentKind::SelfAssessment => vec![
-                (Skill::Adaptability, 2),
-                (Skill::Attitude, 2),
-                (Skill::Communication, 3),
-                (Skill::CrossFunctionalKnowledge, 2),
-                (Skill::Dependability, 3),
-                (Skill::Initiative, 2),
-                (Skill::Leadership, 3),
-                (Skill::Organization, 3),
-                (Skill::Responsibility, 2),
-                (Skill::SelfImprovement, 2),
-                (Skill::Teamwork, 3),
-                (Skill::TechExpertise, 2),
-                (Skill::NewSkill, 1),
-                (Skill::LearningOpportunity, 1),
-                (Skill::Strengths, 1),
-                (Skill::Opportunities, 1),
-            ],
-            AssessmentKind::TeamFeedback => vec![
-                (Skill::Adaptability, 2),
-                (Skill::Attitude, 2),
-                (Skill::Communication, 3),
-                (Skill::CrossFunctionalKnowledge, 2),
-                (Skill::Dependability, 3),
-                (Skill::Initiative, 2),
-                (Skill::Leadership, 4),
-                (Skill::Organization, 3),
-                (Skill::Responsibility, 2),
-                (Skill::SelfImprovement, 2),
-                (Skill::Teamwork, 2),
-                (Skill::TechExpertise, 2),
-                (Skill::NewSkill, 1),
-                (Skill::LearningOpportunity, 1),
-                (Skill::Strengths, 1),
-                (Skill::Opportunities, 1),
-                (Skill::FreeText, 1),
-            ],
+            AssessmentKind::SelfAssessment => (
+                vec![
+                    (Skill::Adaptability, 2),
+                    (Skill::Attitude, 2),
+                    (Skill::Communication, 3),
+                    (Skill::CrossFunctionalKnowledge, 2),
+                    (Skill::Dependability, 3),
+                    (Skill::Initiative, 2),
+                    (Skill::Leadership, 3),
+                    (Skill::Organization, 3),
+                    (Skill::Responsibility, 2),
+                    (Skill::SelfImprovement, 2),
+                    (Skill::Teamwork, 3),
+                    (Skill::TechExpertise, 2),
+                ],
+                vec![
+                    (Skill::NewSkill, 1),
+                    (Skill::LearningOpportunity, 1),
+                    (Skill::Strengths, 1),
+                    (Skill::Opportunities, 1),
+                ],
+            ),
+            AssessmentKind::TeamFeedback => (
+                vec![
+                    (Skill::Adaptability, 2),
+                    (Skill::Attitude, 2),
+                    (Skill::Communication, 3),
+                    (Skill::CrossFunctionalKnowledge, 2),
+                    (Skill::Dependability, 3),
+                    (Skill::Initiative, 2),
+                    (Skill::Leadership, 4),
+                    (Skill::Organization, 3),
+                    (Skill::Responsibility, 2),
+                    (Skill::SelfImprovement, 2),
+                    (Skill::Teamwork, 2),
+                    (Skill::TechExpertise, 2),
+                ],
+                vec![
+                    (Skill::NewSkill, 1),
+                    (Skill::LearningOpportunity, 1),
+                    (Skill::Strengths, 1),
+                    (Skill::Opportunities, 1),
+                    (Skill::FreeText, 1),
+                ],
+            ),
         }
     }
 }
@@ -99,6 +107,19 @@ pub enum Skill {
     FreeText,
 }
 
+impl Skill {
+    pub fn is_graded(&self) -> bool {
+        match self {
+            Skill::NewSkill
+            | Skill::LearningOpportunity
+            | Skill::Strengths
+            | Skill::Opportunities
+            | Skill::FreeText => false,
+            _ => true,
+        }
+    }
+}
+
 impl Display for Skill {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -128,30 +149,28 @@ impl Display for Skill {
 
 pub struct EmployeeSkill {
     pub name: Skill,
-    pub questions: u32,
+    pub question_count: u32,
     grades: Vec<u32>,
     texts: Vec<String>,
 }
 
 impl EmployeeSkill {
-    pub fn new(name: Skill, q: u32) -> EmployeeSkill {
+    pub fn new(name: Skill, count: u32) -> EmployeeSkill {
         EmployeeSkill {
             name: name,
-            questions: q,
-            grades: Vec::with_capacity(q as usize),
-            texts: Vec::with_capacity(q as usize),
+            question_count: count,
+            grades: Vec::with_capacity(count as usize),
+            texts: Vec::with_capacity(count as usize),
         }
     }
 
     pub fn add_response(&mut self, v: &str) {
-        println!("adding response: {}", v.to_owned());
-        match self.name {
-            Skill::NewSkill
-            | Skill::LearningOpportunity
-            | Skill::Strengths
-            | Skill::Opportunities
-            | Skill::FreeText => self.texts.push(v.to_owned()),
-            _ => self.add_grade(v.parse::<u32>().expect("could not parse the grade")),
+        // println!("adding response: {}", v.to_owned());
+
+        if self.name.is_graded() {
+            self.add_grade(v.parse::<u32>().expect("could not parse the grade"))
+        } else {
+            self.texts.push(v.to_owned())
         }
     }
 
@@ -166,17 +185,22 @@ impl EmployeeSkill {
     pub fn txt(&self) -> String {
         self.texts.join("\n")
     }
+
+    pub fn mark_answered(&mut self) {
+        self.question_count -= 1
+    }
+
+    pub fn not_answered(&self) -> bool {
+        self.question_count > 0
+    }
 }
 
 impl Display for EmployeeSkill {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.name {
-            Skill::NewSkill
-            | Skill::LearningOpportunity
-            | Skill::Strengths
-            | Skill::Opportunities
-            | Skill::FreeText => write!(f, "{}:\n {}", self.name, self.texts.join("\n")),
-            _ => write!(f, "{}: {}", self.name, self.avg()),
+        if self.name.is_graded() {
+            write!(f, "{}: {}", self.name, self.avg())
+        } else {
+            write!(f, "{}:\n {}", self.name, self.texts.join("\n"))
         }
     }
 }
