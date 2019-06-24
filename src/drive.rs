@@ -22,10 +22,10 @@ pub fn save_to_drive(
     };
 
     let generate_col_value = |sheet_index: usize, vals: Vec<String>| -> Vec<String> {
-        if sheet_index == 0 {
-            return vals;
+        match sheet_index {
+            0 => vals,
+            _ => vals[1..].to_vec(),
         }
-        return vals[1..].to_vec();
     };
 
     spreadsheet_values.add_value(generate_col_value(
@@ -34,13 +34,9 @@ pub fn save_to_drive(
     ));
 
     for question in questions {
-        let response_cell: String = match question.name {
-            Skill::NewSkill
-            | Skill::LearningOpportunity
-            | Skill::Strengths
-            | Skill::Opportunities
-            | Skill::FreeText => question.txt(),
-            _ => question.avg().to_string(),
+        let response_cell: String = match question.name.is_graded() {
+            true => question.avg().to_string(),
+            false => question.txt(),
         };
 
         spreadsheet_values.add_value(generate_col_value(

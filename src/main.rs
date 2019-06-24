@@ -64,6 +64,8 @@ fn process_sheet_vals(
     spreadsheet_id: &str,
     access_token: &str,
 ) {
+    let mut texts = Vec::with_capacity(2);
+
     for (sheet_index, sheet) in sheet_data.into_iter().enumerate() {
         println!("> reading data from sheet tab: {}", sheet.properties.title);
 
@@ -74,62 +76,94 @@ fn process_sheet_vals(
             .expect("failed to retrieve speadsheet data");
 
         for val_range in sheet_vals.value_ranges.into_iter() {
-            let (feedback_kind, questions) = collect_data(&sheet_title, val_range);
+            let (feedback_kind, graded_skills, statement_feedback) =
+                collect_data(&sheet_title, val_range);
 
-            println!(">>> uploading to drive!");
+            println!(">>> uploading grades to drive!");
 
             drive::save_to_drive(
                 client,
                 access_token,
                 spreadsheet_id,
-                &questions,
+                &graded_skills,
                 &feedback_kind,
                 MajorDimension::Columns,
                 sheet_index,
             );
+
+            println!(">>> collecting textual feedback!");
+
+            texts.push((feedback_kind, statement_feedback));
         }
+    }
+
+    println!(">>> uploading textual feedback!");
+
+    for (fdb_kind, stmt_fdb) in texts {
+        drive::save_to_drive(
+            client,
+            access_token,
+            spreadsheet_id,
+            &stmt_fdb,
+            &fdb_kind,
+            MajorDimension::Rows,
+            0,
+        );
     }
 }
 
-// fn collect_grades() {}
-// fn collect_texts() {}
-
-fn collect_data(sheet_title: &str, val_range: SpreadsheetValueRange) -> (AssessmentKind, Vec<EmployeeSkill>) {
+fn collect_data(
+    sheet_title: &str,
+    val_range: SpreadsheetValueRange,
+) -> (AssessmentKind, Vec<EmployeeSkill>, Vec<EmployeeSkill>) {
     println!("scanning spreadsheet range: {}", val_range.range);
 
     let feedback_kind = AssessmentKind::from_str(sheet_title)
         .expect("failed to detect feedback kind based on sheet name");
-    let cfg_questions = feedback_kind.config().into_iter();
 
-    let mut questions: Vec<EmployeeSkill> = Vec::with_capacity(cfg_questions.len());
-    for (skill, question_count) in cfg_questions {
-        questions.push(EmployeeSkill::new(skill, question_count));
+    let (grades, statements) = feedback_kind.config();
+
+    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(grades.len());
+    for (skill, question_count) in grades {
+        skills.push(EmployeeSkill::new(skill, question_count));
     }
 
-    let mut answers = val_range.values.into_iter().skip(2);
+    let mut skills_in_text: Vec<EmployeeSkill> = Vec::with_capacity(statements.len());
+    for (skill, question_count) in statements {
+        skills_in_text.push(EmployeeSkill::new(skill, question_count));
+    }
 
-    for q in &mut questions {
-        let mut counter: u32 = 0;
+    let (new_skills, position) = scan_feedbacks(2, skills, &val_range.values);
+    let (new_texts, _) = scan_feedbacks(position + 2, skills_in_text, &val_range.values);
 
-        loop {
+    (feedback_kind, new_skills, new_texts)
+}
+
+fn scan_feedbacks(
+    skip: usize,
+    mut skills: Vec<EmployeeSkill>,
+    raw_answers: &Vec<Vec<String>>,
+) -> (Vec<EmployeeSkill>, usize) {
+    let mut answers = raw_answers.into_iter().skip(skip);
+    let mut answered_count: usize = 0;
+
+    for skill in &mut skills {
+        while skill.not_answered() {
             let per_category = &answers.next().unwrap();
             let mut per_category = per_category.into_iter();
 
             let question_stmt = per_category.next().unwrap();
-            println!(">> scanning '{}: {}'", q.name, &question_stmt);
+            println!(">> scanning '{}: {}'", skill.name, &question_stmt);
 
             for grade_str in per_category {
-                q.add_response(grade_str);
+                skill.add_response(grade_str);
             }
-
-            counter = counter + 1;
-            if counter == q.questions {
-                break;
-            }
+            skill.mark_answered();
+            answered_count += 1;
         }
     }
 
-    (feedback_kind, questions)
+    (skills, answered_count)
 }
 
 fn parse_flags() -> Result<String, Box<dyn std_err>> {
