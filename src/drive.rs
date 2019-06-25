@@ -55,6 +55,52 @@ pub fn save_to_drive(
         .expect("could not update google sheet values");
 }
 
+use std::collections::HashMap;
+use std::ops::Deref;
+
+pub fn save_text_drive(
+    client: &sheets::Client,
+    token: &str,
+    spreadsheet_id: &str,
+    feedbacks: Vec<(AssessmentKind, Vec<EmployeeSkill>)>,
+) {
+    let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
+        range: "Chart and Summary".to_owned(),
+        major_dimension: spreadsheets_values::MajorDimension::Rows,
+        values: Vec::new(),
+    };
+
+    let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
+    let mut aggreated_kinds: Vec<String> = Vec::with_capacity(feedbacks.len() + 1 as usize);
+
+    aggreated_kinds.push("Skill / Audience".to_owned());
+
+    for (fdb_kind, stmt_feedbacks) in feedbacks {
+        aggreated_kinds.push(fdb_kind.to_string());
+
+        for stmt_feedback in stmt_feedbacks {
+            aggregated
+                .entry(stmt_feedback.name.to_string())
+                .and_modify(|e| e.push(stmt_feedback.txt()))
+                .or_insert(vec![stmt_feedback.name.to_string(), stmt_feedback.txt()]);
+        }
+    }
+
+    spreadsheet_values.add_value(aggreated_kinds);
+    for item in aggregated.values() {
+        spreadsheet_values.add_value(item.deref().to_vec());
+    }
+
+    client
+        .append_values(
+            token,
+            spreadsheet_id.to_owned(),
+            "Chart and Summary".to_owned(),
+            &spreadsheet_values,
+        )
+        .expect("could not update google sheet values");
+}
+
 // https://developers.google.com/sheets/api/samples/charts#add_a_column_chart
 pub fn add_summary_chart(
     client: &sheets::Client,

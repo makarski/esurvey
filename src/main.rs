@@ -99,17 +99,7 @@ fn process_sheet_vals(
 
     println!(">>> uploading textual feedback!");
 
-    for (fdb_kind, stmt_fdb) in texts {
-        drive::save_to_drive(
-            client,
-            access_token,
-            spreadsheet_id,
-            &stmt_fdb,
-            &fdb_kind,
-            MajorDimension::Rows,
-            0,
-        );
-    }
+    drive::save_text_drive(client, access_token, spreadsheet_id, texts);
 }
 
 fn collect_data(
