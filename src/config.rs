@@ -12,7 +12,15 @@ pub enum AssessmentKind {
 }
 
 impl AssessmentKind {
-    pub fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
+    pub fn config_grades(&self) -> Vec<(Skill, u32)> {
+        self.config().0
+    }
+
+    pub fn config_texts(&self) -> Vec<(Skill, u32)> {
+        self.config().1
+    }
+
+    fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
         match self {
             AssessmentKind::SelfAssessment => (
                 vec![
@@ -147,11 +155,96 @@ impl Display for Skill {
     }
 }
 
+pub struct EmployeeSkills {
+    pub skills: Vec<EmployeeSkill>,
+    max: Option<EmployeeSkill>,
+    min: Option<EmployeeSkill>,
+}
+
+impl EmployeeSkills {
+    pub fn new(cfg: Vec<(Skill, u32)>) -> Self {
+        let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(cfg.len());
+
+        for (skill, question_count) in cfg {
+            skills.push(EmployeeSkill::new(skill, question_count));
+        }
+
+        EmployeeSkills {
+            skills: skills,
+            max: None,
+            min: None,
+        }
+    }
+
+    pub fn scan(&mut self, skip: usize, from_raw: &Vec<Vec<String>>) -> usize {
+        let mut answers = from_raw.into_iter().skip(skip);
+        let mut answered_count: usize = 0;
+
+        for skill in &mut self.skills {
+            while skill.not_answered() {
+                let per_category = &answers.next().unwrap();
+                let mut per_category = per_category.into_iter();
+
+                let question_stmt = per_category.next().unwrap();
+                println!(">> scanning '{}: {}'", skill.name, &question_stmt);
+
+                for grade_str in per_category {
+                    skill.add_response(grade_str);
+                }
+                skill.mark_answered();
+                answered_count += 1;
+            }
+        }
+
+        answered_count
+    }
+
+    pub fn highest(mut self) -> EmployeeSkill {
+        match self.max {
+            Some(t) => t,
+            None => {
+                for es in self.skills.into_iter() {
+                    if self.max.as_ref().is_none() || es.avg() > self.max.as_ref().unwrap().avg() {
+                        self.max = Some(es)
+                    }
+                }
+
+                self.max.unwrap()
+            }
+        }
+    }
+
+    pub fn lowest(mut self) -> EmployeeSkill {
+        match self.min {
+            Some(t) => t,
+            None => {
+                for es in self.skills.into_iter() {
+                    if self.min.as_ref().is_none() || self.min.as_ref().unwrap().avg() < es.avg() {
+                        self.min = Some(es)
+                    }
+                }
+
+                self.min.unwrap()
+            }
+        }
+    }
+}
+
 pub struct EmployeeSkill {
     pub name: Skill,
     pub question_count: u32,
     grades: Vec<u32>,
     texts: Vec<String>,
+}
+
+pub fn init_employee_skils(cfg: Vec<(Skill, u32)>) -> Vec<EmployeeSkill> {
+    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(cfg.len());
+
+    for (skill, question_count) in cfg {
+        skills.push(EmployeeSkill::new(skill, question_count));
+    }
+
+    skills
 }
 
 impl EmployeeSkill {

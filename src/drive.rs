@@ -1,4 +1,4 @@
-use crate::config::{AssessmentKind, EmployeeSkill, Skill};
+use crate::config::{AssessmentKind, EmployeeSkill, EmployeeSkills};
 
 use crate::sheets;
 use sheets::basic_chart::*;
@@ -62,7 +62,7 @@ pub fn save_text_drive(
     client: &sheets::Client,
     token: &str,
     spreadsheet_id: &str,
-    feedbacks: Vec<(AssessmentKind, Vec<EmployeeSkill>)>,
+    feedbacks: Vec<(AssessmentKind, EmployeeSkills)>,
 ) {
     let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
         range: "Chart and Summary".to_owned(),
@@ -78,7 +78,7 @@ pub fn save_text_drive(
     for (fdb_kind, stmt_feedbacks) in feedbacks {
         aggreated_kinds.push(fdb_kind.to_string());
 
-        for stmt_feedback in stmt_feedbacks {
+        for stmt_feedback in &stmt_feedbacks.skills {
             aggregated
                 .entry(stmt_feedback.name.to_string())
                 .and_modify(|e| e.push(stmt_feedback.txt()))

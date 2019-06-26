@@ -85,7 +85,7 @@ fn process_sheet_vals(
                 client,
                 access_token,
                 spreadsheet_id,
-                &graded_skills,
+                &graded_skills.skills,
                 &feedback_kind,
                 MajorDimension::Columns,
                 sheet_index,
@@ -105,55 +105,23 @@ fn process_sheet_vals(
 fn collect_data(
     sheet_title: &str,
     val_range: SpreadsheetValueRange,
-) -> (AssessmentKind, Vec<EmployeeSkill>, Vec<EmployeeSkill>) {
+) -> (
+    AssessmentKind,
+    config::EmployeeSkills,
+    config::EmployeeSkills,
+) {
     println!("scanning spreadsheet range: {}", val_range.range);
 
     let feedback_kind = AssessmentKind::from_str(sheet_title)
         .expect("failed to detect feedback kind based on sheet name");
 
-    let (grades, statements) = feedback_kind.config();
+    let mut grade_skills = config::EmployeeSkills::new(feedback_kind.config_grades());
+    let mut text_skills = config::EmployeeSkills::new(feedback_kind.config_texts());
 
-    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(grades.len());
-    for (skill, question_count) in grades {
-        skills.push(EmployeeSkill::new(skill, question_count));
-    }
+    let offset = grade_skills.scan(2, &val_range.values);
+    text_skills.scan(offset + 2, &val_range.values);
 
-    let mut skills_in_text: Vec<EmployeeSkill> = Vec::with_capacity(statements.len());
-    for (skill, question_count) in statements {
-        skills_in_text.push(EmployeeSkill::new(skill, question_count));
-    }
-
-    let (new_skills, position) = scan_feedbacks(2, skills, &val_range.values);
-    let (new_texts, _) = scan_feedbacks(position + 2, skills_in_text, &val_range.values);
-
-    (feedback_kind, new_skills, new_texts)
-}
-
-fn scan_feedbacks(
-    skip: usize,
-    mut skills: Vec<EmployeeSkill>,
-    raw_answers: &Vec<Vec<String>>,
-) -> (Vec<EmployeeSkill>, usize) {
-    let mut answers = raw_answers.into_iter().skip(skip);
-    let mut answered_count: usize = 0;
-
-    for skill in &mut skills {
-        while skill.not_answered() {
-            let per_category = &answers.next().unwrap();
-            let mut per_category = per_category.into_iter();
-
-            let question_stmt = per_category.next().unwrap();
-            println!(">> scanning '{}: {}'", skill.name, &question_stmt);
-
-            for grade_str in per_category {
-                skill.add_response(grade_str);
-            }
-            skill.mark_answered();
-            answered_count += 1;
-        }
-    }
-
-    (skills, answered_count)
+    (feedback_kind, grade_skills, text_skills)
 }
 
 fn parse_flags() -> Result<String, Box<dyn std_err>> {
