@@ -111,23 +111,15 @@ fn collect_data(
     let feedback_kind = AssessmentKind::from_str(sheet_title)
         .expect("failed to detect feedback kind based on sheet name");
 
-    let (grades, statements) = feedback_kind.config();
+    let grades = config::init_employee_skils(feedback_kind.config_grades());
+    let texts = config::init_employee_skils(feedback_kind.config_texts());
 
-    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(grades.len());
-    for (skill, question_count) in grades {
-        skills.push(EmployeeSkill::new(skill, question_count));
-    }
+    let (grades, position) = scan_feedbacks(2, grades, &val_range.values);
+    let (texts, _) = scan_feedbacks(position + 2, texts, &val_range.values);
 
-    let mut skills_in_text: Vec<EmployeeSkill> = Vec::with_capacity(statements.len());
-    for (skill, question_count) in statements {
-        skills_in_text.push(EmployeeSkill::new(skill, question_count));
-    }
-
-    let (new_skills, position) = scan_feedbacks(2, skills, &val_range.values);
-    let (new_texts, _) = scan_feedbacks(position + 2, skills_in_text, &val_range.values);
-
-    (feedback_kind, new_skills, new_texts)
+    (feedback_kind, grades, texts)
 }
+
 
 fn scan_feedbacks(
     skip: usize,

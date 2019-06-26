@@ -12,7 +12,15 @@ pub enum AssessmentKind {
 }
 
 impl AssessmentKind {
-    pub fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
+    pub fn config_grades(&self) -> Vec<(Skill, u32)> {
+        self.config().0
+    }
+
+    pub fn config_texts(&self) -> Vec<(Skill, u32)> {
+        self.config().1
+    }
+
+    fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
         match self {
             AssessmentKind::SelfAssessment => (
                 vec![
@@ -152,6 +160,16 @@ pub struct EmployeeSkill {
     pub question_count: u32,
     grades: Vec<u32>,
     texts: Vec<String>,
+}
+
+pub fn init_employee_skils(cfg: Vec<(Skill, u32)>) -> Vec<EmployeeSkill> {
+    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(cfg.len());
+
+    for (skill, question_count) in cfg {
+        skills.push(EmployeeSkill::new(skill, question_count));
+    }
+
+    skills
 }
 
 impl EmployeeSkill {
