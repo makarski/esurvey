@@ -237,16 +237,6 @@ pub struct EmployeeSkill {
     texts: Vec<String>,
 }
 
-pub fn init_employee_skils(cfg: Vec<(Skill, u32)>) -> Vec<EmployeeSkill> {
-    let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(cfg.len());
-
-    for (skill, question_count) in cfg {
-        skills.push(EmployeeSkill::new(skill, question_count));
-    }
-
-    skills
-}
-
 impl EmployeeSkill {
     pub fn new(name: Skill, count: u32) -> EmployeeSkill {
         EmployeeSkill {
