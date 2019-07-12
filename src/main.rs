@@ -16,7 +16,7 @@ mod sheets;
 use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
 mod config;
-use config::{AssessmentKind, EmployeeSkill};
+use config::AssessmentKind;
 
 fn main() {
     let spreadsheet_id = parse_flags().expect("could not parse input flags");
@@ -115,8 +115,8 @@ fn collect_data(
     let feedback_kind = AssessmentKind::from_str(sheet_title)
         .expect("failed to detect feedback kind based on sheet name");
 
-    let mut grade_skills = config::EmployeeSkills::new(feedback_kind.config_grades());
-    let mut text_skills = config::EmployeeSkills::new(feedback_kind.config_texts());
+    let mut grade_skills = config::EmployeeSkills::new(&feedback_kind.config_grades());
+    let mut text_skills = config::EmployeeSkills::new(&feedback_kind.config_texts());
 
     let offset = grade_skills.scan(2, &val_range.values);
     text_skills.scan(offset + 2, &val_range.values);
