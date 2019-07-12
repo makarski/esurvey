@@ -1,6 +1,7 @@
 extern crate rust_google_oauth2 as gauth;
 #[macro_use]
 extern crate serde_derive;
+extern crate csv;
 extern crate serde;
 extern crate serde_json;
 
