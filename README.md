@@ -16,5 +16,5 @@ Running
 The following command will read the data from the Spreadsheet and create a new Sheet (tab) `Chart and Summary` with processed and categorised data
 
 ```sh
-OAUTH_CFG_FILE=/mypath/credentials.json probation-csv -id={google_spreadsheet_id}
+OAUTH_CFG_FILE=/mypath/credentials.json probation-csv -id={google_spreadsheet_id} -templates=templates.csv
 ```

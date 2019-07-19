@@ -1,4 +1,5 @@
-use crate::config::{AssessmentKind, EmployeeSkill, EmployeeSkills};
+use crate::config::{AssessmentKind};
+use crate::skills::{EmployeeSkill, EmployeeSkills};
 
 use crate::sheets;
 use sheets::basic_chart::*;
