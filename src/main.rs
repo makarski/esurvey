@@ -1,6 +1,7 @@
 extern crate rust_google_oauth2 as gauth;
 #[macro_use]
 extern crate serde_derive;
+extern crate csv;
 extern crate serde;
 extern crate serde_json;
 
@@ -16,11 +17,15 @@ mod sheets;
 use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
 mod config;
-use config::{AssessmentKind, EmployeeSkill};
+use config::{AssessmentKind, ResponseKind};
+
+mod skills;
+use skills::EmployeeSkills;
 
 fn main() {
-    let spreadsheet_id = parse_flags().expect("could not parse input flags");
-    println!("entered id: {}", spreadsheet_id);
+    let flags = parse_flags().expect("could not parse input flags");
+    println!("entered id: {}", flags.spreadsheet_id);
+    println!("entered templates file: {}", flags.config_file);
 
     let crd_path = env::var("OAUTH_CFG_FILE").expect("failed to retrieve OAUTH_CFG_FILE from env");
     let auth_client = gauth::Auth::new(
@@ -42,18 +47,24 @@ fn main() {
     let client = sheets::Client::new();
 
     let s = client
-        .get_spreadsheet(&token.access_token, &spreadsheet_id)
+        .get_spreadsheet(&token.access_token, &flags.spreadsheet_id)
         .expect("failed to retrieve spreadsheet info");
 
     let summary_sheet_id =
-        drive::create_summary_sheet(&client, &token.access_token, &spreadsheet_id);
+        drive::create_summary_sheet(&client, &token.access_token, &flags.spreadsheet_id);
 
-    process_sheet_vals(&client, s.sheets, &spreadsheet_id, &token.access_token);
+    process_sheet_vals(
+        &client,
+        s.sheets,
+        &flags.spreadsheet_id,
+        &flags.config_file,
+        &token.access_token,
+    );
 
     drive::add_summary_chart(
         &client,
         &token.access_token,
-        &spreadsheet_id,
+        &flags.spreadsheet_id,
         summary_sheet_id,
     );
 }
@@ -62,6 +73,7 @@ fn process_sheet_vals(
     client: &sheets::Client,
     sheet_data: Vec<sheets::spreadsheets::Sheet>,
     spreadsheet_id: &str,
+    config_file: &str,
     access_token: &str,
 ) {
     let mut texts = Vec::with_capacity(2);
@@ -77,7 +89,7 @@ fn process_sheet_vals(
 
         for val_range in sheet_vals.value_ranges.into_iter() {
             let (feedback_kind, graded_skills, statement_feedback) =
-                collect_data(&sheet_title, val_range);
+                collect_data(config_file, &sheet_title, val_range);
 
             println!(">>> uploading grades to drive!");
 
@@ -103,20 +115,19 @@ fn process_sheet_vals(
 }
 
 fn collect_data(
+    cfg_filename: &str,
     sheet_title: &str,
     val_range: SpreadsheetValueRange,
-) -> (
-    AssessmentKind,
-    config::EmployeeSkills,
-    config::EmployeeSkills,
-) {
+) -> (AssessmentKind, EmployeeSkills, EmployeeSkills) {
     println!("scanning spreadsheet range: {}", val_range.range);
 
     let feedback_kind = AssessmentKind::from_str(sheet_title)
         .expect("failed to detect feedback kind based on sheet name");
 
-    let mut grade_skills = config::EmployeeSkills::new(feedback_kind.config_grades());
-    let mut text_skills = config::EmployeeSkills::new(feedback_kind.config_texts());
+    let mut grade_skills =
+        EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade));
+    let mut text_skills =
+        EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text));
 
     let offset = grade_skills.scan(2, &val_range.values);
     text_skills.scan(offset + 2, &val_range.values);
@@ -124,23 +135,42 @@ fn collect_data(
     (feedback_kind, grade_skills, text_skills)
 }
 
-fn parse_flags() -> Result<String, Box<dyn std_err>> {
-    let mut spreadsheet_id = String::new();
+struct Flags {
+    spreadsheet_id: String,
+    config_file: String,
+}
+
+fn parse_flags() -> Result<Flags, Box<dyn std_err>> {
+    let mut flags = Flags {
+        spreadsheet_id: String::new(),
+        config_file: String::new(),
+    };
 
     for arg in args().collect::<Vec<String>>() {
         if arg.contains("-id=") {
-            spreadsheet_id = arg.trim_start_matches("-id=").parse()?;
+            flags.spreadsheet_id = arg.trim_start_matches("-id=").parse()?;
+        }
+
+        if arg.contains("-templates=") {
+            flags.config_file = arg.trim_start_matches("-templates=").parse()?;
         }
     }
 
-    if spreadsheet_id.is_empty() {
-        return Err(Box::new(io_err::new(
-            io_err_kind::InvalidInput,
-            "spreadsheet_id is not provided",
-        )));
+    for (flag_name, cfg_entry) in [
+        ("-spreadsheet_id", &flags.spreadsheet_id),
+        ("-templates", &flags.config_file),
+    ]
+    .iter()
+    {
+        if cfg_entry.is_empty() {
+            return Err(Box::new(io_err::new(
+                io_err_kind::InvalidInput,
+                format!("missing required flag: {}", flag_name),
+            )));
+        }
     }
 
-    Ok(spreadsheet_id)
+    Ok(flags)
 }
 
 fn handle_auth(consent_uri: String) -> Result<String, Box<dyn std::error::Error>> {

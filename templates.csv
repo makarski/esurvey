@@ -1,0 +1,68 @@
+Assessment Kind,Response Kind,Category,Template
+Self-Assessment,grade,Adaptability,I constructively approach new and unexpected events or announcements.
+Self-Assessment,grade,Adaptability,I am open to work on the tasks not entirely related to my position.
+Self-Assessment,grade,Attitude,I aim to create a positive working environment around myself.
+Self-Assessment,grade,Attitude,I react constructively after making a mistake.
+Self-Assessment,grade,Communication,I communicate ideas well verbally.
+Self-Assessment,grade,Communication,I don\'t have misunderstandings with my teammates.
+Self-Assessment,grade,Communication,I communicate ideas well in writing.
+Self-Assessment,grade,Cross-functional Knowledge,I am open to learn new things and expand my professional expertise.
+Self-Assessment,grade,Cross-functional Knowledge,"I have knowledge and experience that goes beyond my job responsibilities, i.e., tools, methodologies, frameworks."
+Self-Assessment,grade,Dependability,I achieve my objectives and goals.
+Self-Assessment,grade,Dependability,I follow team standards and processes.
+Self-Assessment,grade,Dependability,I pay attention to detail.
+Self-Assessment,grade,Initiative,"I am proactive in suggesting solutions and improvements, i.e., code quality, process, etc."
+Self-Assessment,grade,Initiative,I take fast and informed decisions.My teammates trust the choices that I make.
+Self-Assessment,grade,Leadership,I constructively handle (critical) feedback.
+Self-Assessment,grade,Leadership,I provide constructive feedback to individual teammates and the team.
+Self-Assessment,grade,Leadership,I value contributions and opinions of other teammates.
+Self-Assessment,grade,Organization,I am well organized.
+Self-Assessment,grade,Organization,I can organize teamwork.
+Self-Assessment,grade,Organization,I am a productive employee.
+Self-Assessment,grade,Responsibility,I keep personal involvement high and support the team when the project gets delayed or stuck.
+Self-Assessment,grade,Responsibility,I always finish my initiatives.
+Self-Assessment,grade,Self-Improvement,I set clear and measurable goals for myself.
+Self-Assessment,grade,Self-Improvement,"I use means at my disposal (conferences, books, webinars) for continuous self-improvement."
+Self-Assessment,grade,Teamwork,I offer support to the other team members when needed.
+Self-Assessment,grade,Teamwork,I am a team player.
+Self-Assessment,grade,Teamwork,I collaborate and build a relationship with the team.
+Self-Assessment,grade,Tech. Expertise,I possess all required (tech.) skills for doing my job.
+Self-Assessment,grade,Tech. Expertise,I can teach to other teammates in some/any technical discipline.
+Self-Assessment,text,New Skill,New Skill
+Self-Assessment,text,Skill to Acquire,Skill to Acquire
+Self-Assessment,text,Strengths,Strengths
+Self-Assessment,text,Improvement Opportunities,Improvement Opportunities
+Team-Feedback,grade,Adaptability,constructively approaches new and unexpected events or announcements.
+Team-Feedback,grade,Adaptability,is open to work on the tasks not entirely related to his/her position.
+Team-Feedback,grade,Attitude,aims to create a positive working environment around him/herself.
+Team-Feedback,grade,Attitude,reacts constructively after making a mistake.
+Team-Feedback,grade,Communication,communicates ideas well verbally.
+Team-Feedback,grade,Communication,I don\'t have misunderstandings with
+Team-Feedback,grade,Communication,communicates ideas well in writing.
+Team-Feedback,grade,Cross-functional Knowledge,is open to learn new things and expand his/her professional expertise.
+Team-Feedback,grade,Cross-functional Knowledge,"has knowledge and experience that goes beyond their job responsibilities, i.e. tools, methodologies, frameworks."
+Team-Feedback,grade,Dependability,achieves his/her objectives and goals.
+Team-Feedback,grade,Dependability,follows team standards and processes.
+Team-Feedback,grade,Dependability,pays attention to detail.
+Team-Feedback,grade,Initiative,"is proactive suggesting solutions and improvements, .e. code quality, process, etc."
+Team-Feedback,grade,Initiative,takes fast and informed decisions.
+Team-Feedback,grade,Leadership,I trust the decisions that takes.
+Team-Feedback,grade,Leadership,constructively handles (critical) feedback.
+Team-Feedback,grade,Leadership,provides constructive feedback to the team and me.
+Team-Feedback,grade,Leadership,values contributions and opinions of other teammates.
+Team-Feedback,grade,Organization,is well organized.
+Team-Feedback,grade,Organization,can organize teamwork.
+Team-Feedback,grade,Organization,is a productive employee.
+Team-Feedback,grade,Responsibility,keeps personal involvement high and supports the team when the project gets delayed/stuck.
+Team-Feedback,grade,Responsibility,always finishes his/her initiatives.
+Team-Feedback,grade,Self-Improvement,sets clear and measurable goals for him/her-self.
+Team-Feedback,grade,Self-Improvement,"uses means at his/her disposal (conferences, books, webinars) for continuous self-improvement."
+Team-Feedback,grade,Teamwork,offers support to the other team members when needed.
+Team-Feedback,grade,Teamwork,"is a team player, collaborates and builds a relationship with the team."
+Team-Feedback,grade,Tech. Expertise,possesses all required (tech.) skills for doing his/her job.
+Team-Feedback,grade,Tech. Expertise,can teach other teammates in some/any technical discipline.
+Team-Feedback,text,New Skill,This is what I have learned from
+Team-Feedback,text,Skill to Acquire,This is what I could share knowledge wise with
+Team-Feedback,text,Strengths,Strengths
+Team-Feedback,text,Improvement Opportunities,Improvements
+Team-Feedback,text,Free Form Feedback,Text that will be shared

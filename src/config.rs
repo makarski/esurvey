@@ -1,73 +1,70 @@
+use csv;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::fs::File;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
+use std::path::Path;
 use std::str::FromStr;
 
 const SELF_ASSESSMENT_STR: &str = "self-assessment";
 const TEAM_FEEDBACK_STR: &str = "team-feedback";
 
+#[derive(PartialEq)]
 pub enum AssessmentKind {
     TeamFeedback,
     SelfAssessment,
 }
 
 impl AssessmentKind {
-    pub fn config_grades(&self) -> Vec<(Skill, u32)> {
-        self.config().0
-    }
+    pub fn config<P: AsRef<Path>>(&self, filename: P, resp_kind: ResponseKind) -> Vec<Vec<String>> {
+        let file = File::open(filename).expect("failed to open config file");
 
-    pub fn config_texts(&self) -> Vec<(Skill, u32)> {
-        self.config().1
-    }
+        let mut rdr = csv::Reader::from_reader(file);
+        let mut out: Vec<Vec<String>> = Vec::new();
+        for result in rdr.records() {
+            let record = result.expect("failed parsing the entry");
 
-    fn config(&self) -> (Vec<(Skill, u32)>, Vec<(Skill, u32)>) {
-        match self {
-            AssessmentKind::SelfAssessment => (
-                vec![
-                    (Skill::Adaptability, 2),
-                    (Skill::Attitude, 2),
-                    (Skill::Communication, 3),
-                    (Skill::CrossFunctionalKnowledge, 2),
-                    (Skill::Dependability, 3),
-                    (Skill::Initiative, 2),
-                    (Skill::Leadership, 3),
-                    (Skill::Organization, 3),
-                    (Skill::Responsibility, 2),
-                    (Skill::SelfImprovement, 2),
-                    (Skill::Teamwork, 3),
-                    (Skill::TechExpertise, 2),
-                ],
-                vec![
-                    (Skill::NewSkill, 1),
-                    (Skill::LearningOpportunity, 1),
-                    (Skill::Strengths, 1),
-                    (Skill::Opportunities, 1),
-                ],
-            ),
-            AssessmentKind::TeamFeedback => (
-                vec![
-                    (Skill::Adaptability, 2),
-                    (Skill::Attitude, 2),
-                    (Skill::Communication, 3),
-                    (Skill::CrossFunctionalKnowledge, 2),
-                    (Skill::Dependability, 3),
-                    (Skill::Initiative, 2),
-                    (Skill::Leadership, 4),
-                    (Skill::Organization, 3),
-                    (Skill::Responsibility, 2),
-                    (Skill::SelfImprovement, 2),
-                    (Skill::Teamwork, 2),
-                    (Skill::TechExpertise, 2),
-                ],
-                vec![
-                    (Skill::NewSkill, 1),
-                    (Skill::LearningOpportunity, 1),
-                    (Skill::Strengths, 1),
-                    (Skill::Opportunities, 1),
-                    (Skill::FreeText, 1),
-                ],
-            ),
+            let mut template_cfgs = record.iter().take(2);
+
+            // todo: move validations to a fn
+            let assmt_cfg = template_cfgs.next().and_then(|assmt_kind_str| {
+                let is_matching_kind = match AssessmentKind::from_str(assmt_kind_str) {
+                    Ok(t) => t == *self,
+                    Err(_) => false,
+                };
+
+                if is_matching_kind {
+                    return Some(assmt_kind_str);
+                }
+
+                return None;
+            });
+
+            let grade_cfg = template_cfgs.next().and_then(|response_kind_str| {
+                let is_matching_resp_kind = match ResponseKind::from_str(response_kind_str) {
+                    Ok(t) => t == resp_kind,
+                    Err(_) => false,
+                };
+
+                if is_matching_resp_kind {
+                    return Some(response_kind_str);
+                }
+
+                return None;
+            });
+
+            if assmt_cfg.and(grade_cfg).is_none() {
+                continue;
+            }
+            let mut collected: Vec<String> = Vec::with_capacity(2);
+            for entry in record.iter().skip(2) {
+                collected.push(entry.to_owned());
+            }
+
+            out.push(collected);
         }
+
+        out
     }
 }
 
@@ -75,12 +72,12 @@ impl FromStr for AssessmentKind {
     type Err = io_err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             TEAM_FEEDBACK_STR => Ok(AssessmentKind::TeamFeedback),
             SELF_ASSESSMENT_STR => Ok(AssessmentKind::SelfAssessment),
             _ => Err(io_err::new(
                 io_err_kind::InvalidInput,
-                "AssessemntKind parse error. valid types: `team-feedback`, `self-assessment`",
+                format!("parse error. unknown assessment kind: {}", s),
             )),
         }
     }
@@ -95,195 +92,23 @@ impl Display for AssessmentKind {
     }
 }
 
-pub enum Skill {
-    Adaptability,
-    Attitude,
-    Communication,
-    CrossFunctionalKnowledge,
-    Dependability,
-    Initiative,
-    Leadership,
-    Organization,
-    Responsibility,
-    SelfImprovement,
-    Teamwork,
-    TechExpertise,
-    NewSkill,
-    LearningOpportunity,
-    Strengths,
-    Opportunities,
-    FreeText,
+#[derive(PartialEq)]
+pub enum ResponseKind {
+    Grade,
+    Text,
 }
 
-impl Skill {
-    pub fn is_graded(&self) -> bool {
-        match self {
-            Skill::NewSkill
-            | Skill::LearningOpportunity
-            | Skill::Strengths
-            | Skill::Opportunities
-            | Skill::FreeText => false,
-            _ => true,
-        }
-    }
-}
+impl FromStr for ResponseKind {
+    type Err = io_err;
 
-impl Display for Skill {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Skill::Adaptability => write!(f, "Adaptability"),
-            Skill::Attitude => write!(f, "Attitude"),
-            Skill::Communication => write!(f, "Communication"),
-            Skill::CrossFunctionalKnowledge => write!(f, "Cross-functional Knowledge"),
-            Skill::Dependability => write!(f, "Dependability"),
-            Skill::Initiative => write!(f, "Initiative"),
-            Skill::Leadership => write!(f, "Leadership"),
-            Skill::Organization => write!(f, "Organization"),
-            Skill::Responsibility => write!(f, "Responsibility"),
-            Skill::SelfImprovement => write!(f, "Self-Improvement"),
-            Skill::Teamwork => write!(f, "Teamwork"),
-            Skill::TechExpertise => write!(f, "Tech. Expertise"),
-
-            // Textual Feedback
-            Skill::NewSkill => write!(f, "New Skill"),
-            Skill::LearningOpportunity => write!(f, "Skill to Acquire"),
-            Skill::Strengths => write!(f, "Strengths"),
-            Skill::Opportunities => write!(f, "Improvement Opportunities"),
-
-            Skill::FreeText => write!(f, "Free Form Feedback"),
-        }
-    }
-}
-
-pub struct EmployeeSkills {
-    pub skills: Vec<EmployeeSkill>,
-    max: Option<EmployeeSkill>,
-    min: Option<EmployeeSkill>,
-}
-
-impl EmployeeSkills {
-    pub fn new(cfg: Vec<(Skill, u32)>) -> Self {
-        let mut skills: Vec<EmployeeSkill> = Vec::with_capacity(cfg.len());
-
-        for (skill, question_count) in cfg {
-            skills.push(EmployeeSkill::new(skill, question_count));
-        }
-
-        EmployeeSkills {
-            skills: skills,
-            max: None,
-            min: None,
-        }
-    }
-
-    pub fn scan(&mut self, skip: usize, from_raw: &Vec<Vec<String>>) -> usize {
-        let mut answers = from_raw.into_iter().skip(skip);
-        let mut answered_count: usize = 0;
-
-        for skill in &mut self.skills {
-            while skill.not_answered() {
-                let per_category = &answers.next().unwrap();
-                let mut per_category = per_category.into_iter();
-
-                let question_stmt = per_category.next().unwrap();
-                println!(">> scanning '{}: {}'", skill.name, &question_stmt);
-
-                for grade_str in per_category {
-                    skill.add_response(grade_str);
-                }
-                skill.mark_answered();
-                answered_count += 1;
-            }
-        }
-
-        answered_count
-    }
-
-    pub fn highest(mut self) -> EmployeeSkill {
-        match self.max {
-            Some(t) => t,
-            None => {
-                for es in self.skills.into_iter() {
-                    if self.max.as_ref().is_none() || es.avg() > self.max.as_ref().unwrap().avg() {
-                        self.max = Some(es)
-                    }
-                }
-
-                self.max.unwrap()
-            }
-        }
-    }
-
-    pub fn lowest(mut self) -> EmployeeSkill {
-        match self.min {
-            Some(t) => t,
-            None => {
-                for es in self.skills.into_iter() {
-                    if self.min.as_ref().is_none() || self.min.as_ref().unwrap().avg() < es.avg() {
-                        self.min = Some(es)
-                    }
-                }
-
-                self.min.unwrap()
-            }
-        }
-    }
-}
-
-pub struct EmployeeSkill {
-    pub name: Skill,
-    pub question_count: u32,
-    grades: Vec<u32>,
-    texts: Vec<String>,
-}
-
-impl EmployeeSkill {
-    pub fn new(name: Skill, count: u32) -> EmployeeSkill {
-        EmployeeSkill {
-            name: name,
-            question_count: count,
-            grades: Vec::with_capacity(count as usize),
-            texts: Vec::with_capacity(count as usize),
-        }
-    }
-
-    pub fn add_response(&mut self, v: &str) {
-        // println!("adding response: {}", v.to_owned());
-
-        if self.name.is_graded() {
-            self.add_grade(v.parse::<u32>().expect("could not parse the grade"))
-        } else {
-            self.texts.push(v.to_owned())
-        }
-    }
-
-    fn add_grade(&mut self, v: u32) {
-        self.grades.push(v)
-    }
-
-    pub fn avg(&self) -> f32 {
-        self.grades.iter().sum::<u32>() as f32 / self.grades.len() as f32
-    }
-
-    pub fn txt(&self) -> String {
-        self.texts.join("\n")
-    }
-
-    pub fn mark_answered(&mut self) {
-        self.question_count -= 1
-    }
-
-    pub fn not_answered(&self) -> bool {
-        self.question_count > 0
-    }
-}
-
-impl Display for EmployeeSkill {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.name.is_graded() {
-            write!(f, "{}: {}", self.name, self.avg())
-        } else {
-            write!(f, "{}:\n {}", self.name, self.texts.join("\n"))
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "grade" => Ok(ResponseKind::Grade),
+            "text" => Ok(ResponseKind::Text),
+            _ => Err(io_err::new(
+                io_err_kind::InvalidInput,
+                format!("parse error. unknown response kind: {}", s),
+            )),
         }
     }
 }
