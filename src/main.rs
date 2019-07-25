@@ -52,8 +52,10 @@ fn main() {
         .get_spreadsheet(&token.access_token, &flags.spreadsheet_id)
         .expect("failed to retrieve spreadsheet info");
 
-    let summary_sheet_id =
-        drive::create_summary_sheet(&client, &token.access_token, &flags.spreadsheet_id);
+    let spreadsheet_client = drive::SpreadsheetClient::new(&client, &token.access_token);
+    let summary_sheet_id = spreadsheet_client
+        .add_summary_sheet(&flags.spreadsheet_id)
+        .expect("failed to create summary sheet");
 
     process_sheet_vals(
         &client,

@@ -2,7 +2,9 @@ use crate::config::AssessmentKind;
 use crate::skills::{EmployeeSkill, EmployeeSkills};
 
 use crate::sheets;
-use sheets::spreadsheets_values;
+use sheets::spreadsheets::SheetProperties;
+use sheets::spreadsheets_batch_update::{AddSheetRequest, Request, SpreadsheetBatchUpdate};
+use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
 pub fn save_to_drive(
     client: &sheets::Client,
@@ -10,10 +12,10 @@ pub fn save_to_drive(
     spreadsheet_id: &str,
     questions: &Vec<EmployeeSkill>,
     feedback_kind: &AssessmentKind,
-    major_dimension: spreadsheets_values::MajorDimension,
+    major_dimension: MajorDimension,
     sheet_index: usize,
 ) {
-    let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
+    let mut spreadsheet_values = SpreadsheetValueRange {
         range: "Chart and Summary".to_owned(),
         major_dimension: major_dimension,
         values: Vec::with_capacity(questions.len() as usize + 1),
@@ -62,9 +64,9 @@ pub fn save_text_drive(
     spreadsheet_id: &str,
     feedbacks: Vec<(AssessmentKind, EmployeeSkills)>,
 ) {
-    let mut spreadsheet_values = sheets::spreadsheets_values::SpreadsheetValueRange {
+    let mut spreadsheet_values = SpreadsheetValueRange {
         range: "Chart and Summary".to_owned(),
-        major_dimension: spreadsheets_values::MajorDimension::Rows,
+        major_dimension: MajorDimension::Rows,
         values: Vec::new(),
     };
 
@@ -99,34 +101,51 @@ pub fn save_text_drive(
         .expect("could not update google sheet values");
 }
 
-pub fn create_summary_sheet(client: &sheets::Client, token: &str, spreadsheet_id: &str) -> u64 {
-    let batch_update = sheets::spreadsheets_batch_update::SpreadsheetBatchUpdate {
-        requests: vec![sheets::spreadsheets_batch_update::Request {
-            add_sheet: Some(sheets::spreadsheets_batch_update::AddSheetRequest {
-                properties: sheets::spreadsheets::SheetProperties {
-                    title: "Chart and Summary".to_owned(),
-                    ..Default::default()
-                },
-            }),
-            add_chart: None,
-        }],
-        include_spreadsheet_in_response: true,
-        response_ranges: Vec::new(),
-        response_include_grid_data: false,
-    };
+use std::error::Error as std_err;
 
-    let u = client
-        .batch_update_spreadsheet(token, spreadsheet_id, &batch_update)
-        .map(|response_body| {
-            // todo: find a better way to deal with the borrow checker
+pub struct SpreadsheetClient<'a> {
+    sheets_client: &'a sheets::Client,
+    access_token: String,
+}
 
-            let mut sheet_id: u64 = 0;
-            for reply in response_body.replies.into_iter().take(1) {
-                sheet_id = reply.add_sheet.unwrap().properties.sheet_id.unwrap();
-            }
+impl<'a> SpreadsheetClient<'a> {
+    pub fn new(sheets_client: &'a sheets::Client, access_token: &str) -> Self {
+        SpreadsheetClient {
+            sheets_client: sheets_client,
+            access_token: access_token.to_owned(),
+        }
+    }
 
-            sheet_id
-        });
+    pub fn add_summary_sheet(&self, spreadsheet_id: &str) -> Result<u64, Box<dyn std_err>> {
+        let batch_update = SpreadsheetBatchUpdate {
+            requests: vec![Request {
+                add_sheet: Some(AddSheetRequest {
+                    properties: SheetProperties {
+                        title: "Chart and Summary".to_owned(),
+                        ..Default::default()
+                    },
+                }),
+                add_chart: None,
+            }],
+            include_spreadsheet_in_response: true,
+            response_ranges: Vec::new(),
+            response_include_grid_data: false,
+        };
 
-    u.expect("could not retrieve sheet id")
+        let sheet_id = self
+            .sheets_client
+            .batch_update_spreadsheet(self.access_token.as_str(), spreadsheet_id, &batch_update)
+            .map(|response_body| {
+                // todo: find a better way to deal with the borrow checker
+
+                let mut sheet_id: u64 = 0;
+                for reply in response_body.replies.into_iter().take(1) {
+                    sheet_id = reply.add_sheet.unwrap().properties.sheet_id.unwrap();
+                }
+
+                sheet_id
+            })?;
+
+        Ok(sheet_id)
+    }
 }
