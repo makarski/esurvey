@@ -58,6 +58,7 @@ fn main() {
         .expect("failed to create summary sheet");
 
     process_sheet_vals(
+        &spreadsheet_client,
         &client,
         s.sheets,
         &flags.spreadsheet_id,
@@ -74,6 +75,7 @@ fn main() {
 }
 
 fn process_sheet_vals(
+    sheets_client: &drive::SpreadsheetClient,
     client: &sheets::Client,
     sheet_data: Vec<sheets::spreadsheets::Sheet>,
     spreadsheet_id: &str,
@@ -115,7 +117,9 @@ fn process_sheet_vals(
 
     println!(">>> uploading textual feedback!");
 
-    drive::save_text_drive(client, access_token, spreadsheet_id, texts);
+    sheets_client
+        .save_text(spreadsheet_id, texts)
+        .expect("failed to upload text feedback");
 }
 
 fn collect_data(
