@@ -75,7 +75,7 @@ fn main() {
 }
 
 fn process_sheet_vals(
-    sheets_client: &drive::SpreadsheetClient,
+    spreadsheet_client: &drive::SpreadsheetClient,
     client: &sheets::Client,
     sheet_data: Vec<sheets::spreadsheets::Sheet>,
     spreadsheet_id: &str,
@@ -99,15 +99,15 @@ fn process_sheet_vals(
 
             println!(">>> uploading grades to drive!");
 
-            drive::save_to_drive(
-                client,
-                access_token,
-                spreadsheet_id,
-                &graded_skills.skills,
-                &feedback_kind,
-                MajorDimension::Columns,
-                sheet_index,
-            );
+            spreadsheet_client
+                .save_grades(
+                    spreadsheet_id,
+                    &graded_skills.skills,
+                    &feedback_kind,
+                    MajorDimension::Columns,
+                    sheet_index,
+                )
+                .expect("failed to upload graded feedback");
 
             println!(">>> collecting textual feedback!");
 
@@ -117,7 +117,7 @@ fn process_sheet_vals(
 
     println!(">>> uploading textual feedback!");
 
-    sheets_client
+    spreadsheet_client
         .save_text(spreadsheet_id, texts)
         .expect("failed to upload text feedback");
 }

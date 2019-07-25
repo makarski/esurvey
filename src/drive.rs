@@ -1,63 +1,14 @@
 use crate::config::AssessmentKind;
-use crate::skills::{EmployeeSkill, EmployeeSkills};
-
 use crate::sheets;
-use sheets::spreadsheets::SheetProperties;
-use sheets::spreadsheets_batch_update::{AddSheetRequest, Request, SpreadsheetBatchUpdate};
-use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
-
-pub fn save_to_drive(
-    client: &sheets::Client,
-    token: &str,
-    spreadsheet_id: &str,
-    questions: &Vec<EmployeeSkill>,
-    feedback_kind: &AssessmentKind,
-    major_dimension: MajorDimension,
-    sheet_index: usize,
-) {
-    let mut spreadsheet_values = SpreadsheetValueRange {
-        range: "Chart and Summary".to_owned(),
-        major_dimension: major_dimension,
-        values: Vec::with_capacity(questions.len() as usize + 1),
-    };
-
-    let generate_col_value = |sheet_index: usize, vals: Vec<String>| -> Vec<String> {
-        match sheet_index {
-            0 => vals,
-            _ => vals[1..].to_vec(),
-        }
-    };
-
-    spreadsheet_values.add_value(generate_col_value(
-        sheet_index,
-        vec!["".to_owned(), feedback_kind.to_string()],
-    ));
-
-    for question in questions {
-        let response_cell: String = match question.name.is_graded() {
-            true => question.avg().to_string(),
-            false => question.txt(),
-        };
-
-        spreadsheet_values.add_value(generate_col_value(
-            sheet_index,
-            vec![question.name.to_string(), response_cell],
-        ));
-    }
-
-    client
-        .append_values(
-            token,
-            spreadsheet_id.to_owned(),
-            "Chart and Summary".to_owned(),
-            &spreadsheet_values,
-        )
-        .expect("could not update google sheet values");
-}
+use crate::skills::{EmployeeSkill, EmployeeSkills};
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
 use std::ops::Deref;
+
+use sheets::spreadsheets::SheetProperties;
+use sheets::spreadsheets_batch_update::{AddSheetRequest, Request, SpreadsheetBatchUpdate};
+use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
 pub struct SpreadsheetClient<'a> {
     sheets_client: &'a sheets::Client,
@@ -135,6 +86,54 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_values.add_value(aggreated_kinds);
         for item in aggregated.values() {
             spreadsheet_values.add_value(item.deref().to_vec());
+        }
+
+        self.sheets_client.append_values(
+            &self.access_token,
+            spreadsheet_id.to_owned(),
+            "Chart and Summary".to_owned(),
+            &spreadsheet_values,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn save_grades(
+        &self,
+        spreadsheet_id: &str,
+        questions: &Vec<EmployeeSkill>,
+        feedback_kind: &AssessmentKind,
+        major_dimension: MajorDimension,
+        sheet_index: usize,
+    ) -> Result<(), Box<dyn std_err>> {
+        let mut spreadsheet_values = SpreadsheetValueRange {
+            range: "Chart and Summary".to_owned(),
+            major_dimension: major_dimension,
+            values: Vec::with_capacity(questions.len() as usize + 1),
+        };
+
+        let generate_col_value = |sheet_index: usize, vals: Vec<String>| -> Vec<String> {
+            match sheet_index {
+                0 => vals,
+                _ => vals[1..].to_vec(),
+            }
+        };
+
+        spreadsheet_values.add_value(generate_col_value(
+            sheet_index,
+            vec!["".to_owned(), feedback_kind.to_string()],
+        ));
+
+        for question in questions {
+            let response_cell: String = match question.name.is_graded() {
+                true => question.avg().to_string(),
+                false => question.txt(),
+            };
+
+            spreadsheet_values.add_value(generate_col_value(
+                sheet_index,
+                vec![question.name.to_string(), response_cell],
+            ));
         }
 
         self.sheets_client.append_values(
