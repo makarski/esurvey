@@ -22,6 +22,8 @@ use config::{AssessmentKind, ResponseKind};
 mod skills;
 use skills::EmployeeSkills;
 
+mod chart;
+
 fn main() {
     let flags = parse_flags().expect("could not parse input flags");
     println!("entered id: {}", flags.spreadsheet_id);
@@ -61,7 +63,7 @@ fn main() {
         &token.access_token,
     );
 
-    drive::add_summary_chart(
+    chart::add_summary_chart(
         &client,
         &token.access_token,
         &flags.spreadsheet_id,
