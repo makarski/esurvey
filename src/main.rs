@@ -10,17 +10,12 @@ use std::env::args;
 use std::error::Error as std_err;
 use std::io::{stdin, Error as io_err, ErrorKind as io_err_kind};
 use std::path::PathBuf;
-use std::str::FromStr;
 
+mod chart;
+mod config;
 mod drive;
 mod sheets;
-use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
-
-mod config;
-use config::{AssessmentKind, ResponseKind};
-
 mod skills;
-use skills::EmployeeSkills;
 
 fn main() {
     let flags = parse_flags().expect("could not parse input flags");
@@ -46,93 +41,27 @@ fn main() {
 
     let client = sheets::Client::new();
 
-    let s = client
+    let spreadsheet = client
         .get_spreadsheet(&token.access_token, &flags.spreadsheet_id)
         .expect("failed to retrieve spreadsheet info");
 
-    let summary_sheet_id =
-        drive::create_summary_sheet(&client, &token.access_token, &flags.spreadsheet_id);
+    let spreadsheet_client = drive::SpreadsheetClient::new(&client, &token.access_token);
+    let summary_sheet_id = spreadsheet_client
+        .add_summary_sheet(&flags.spreadsheet_id)
+        .expect("failed to create summary sheet");
 
-    process_sheet_vals(
-        &client,
-        s.sheets,
+    spreadsheet_client.build_summary(
+        spreadsheet.sheets,
         &flags.spreadsheet_id,
         &flags.config_file,
-        &token.access_token,
     );
 
-    drive::add_summary_chart(
+    chart::add_summary_chart(
         &client,
         &token.access_token,
         &flags.spreadsheet_id,
         summary_sheet_id,
     );
-}
-
-fn process_sheet_vals(
-    client: &sheets::Client,
-    sheet_data: Vec<sheets::spreadsheets::Sheet>,
-    spreadsheet_id: &str,
-    config_file: &str,
-    access_token: &str,
-) {
-    let mut texts = Vec::with_capacity(2);
-
-    for (sheet_index, sheet) in sheet_data.into_iter().enumerate() {
-        println!("> reading data from sheet tab: {}", sheet.properties.title);
-
-        let sheet_title = sheet.properties.title;
-
-        let sheet_vals = client
-            .get_batch_values(access_token, spreadsheet_id, vec![sheet_title.clone()])
-            .expect("failed to retrieve speadsheet data");
-
-        for val_range in sheet_vals.value_ranges.into_iter() {
-            let (feedback_kind, graded_skills, statement_feedback) =
-                collect_data(config_file, &sheet_title, val_range);
-
-            println!(">>> uploading grades to drive!");
-
-            drive::save_to_drive(
-                client,
-                access_token,
-                spreadsheet_id,
-                &graded_skills.skills,
-                &feedback_kind,
-                MajorDimension::Columns,
-                sheet_index,
-            );
-
-            println!(">>> collecting textual feedback!");
-
-            texts.push((feedback_kind, statement_feedback));
-        }
-    }
-
-    println!(">>> uploading textual feedback!");
-
-    drive::save_text_drive(client, access_token, spreadsheet_id, texts);
-}
-
-fn collect_data(
-    cfg_filename: &str,
-    sheet_title: &str,
-    val_range: SpreadsheetValueRange,
-) -> (AssessmentKind, EmployeeSkills, EmployeeSkills) {
-    println!("scanning spreadsheet range: {}", val_range.range);
-
-    let feedback_kind = AssessmentKind::from_str(sheet_title)
-        .expect("failed to detect feedback kind based on sheet name");
-
-    let mut grade_skills =
-        EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade));
-    let mut text_skills =
-        EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text));
-
-    let offset = grade_skills.scan(2, &val_range.values);
-    text_skills.scan(offset + 2, &val_range.values);
-
-    (feedback_kind, grade_skills, text_skills)
 }
 
 struct Flags {
