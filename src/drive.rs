@@ -1,12 +1,13 @@
-use crate::config::AssessmentKind;
+use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
 use crate::skills::{EmployeeSkill, EmployeeSkills};
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
 use std::ops::Deref;
+use std::str::FromStr;
 
-use sheets::spreadsheets::SheetProperties;
+use sheets::spreadsheets::{Sheet, SheetProperties};
 use sheets::spreadsheets_batch_update::{AddSheetRequest, Request, SpreadsheetBatchUpdate};
 use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
@@ -21,6 +22,56 @@ impl<'a> SpreadsheetClient<'a> {
             sheets_client: sheets_client,
             access_token: access_token.to_owned(),
         }
+    }
+
+    // todo: add error returns
+    pub fn build_summary(
+        &self,
+        sheet_items: Vec<Sheet>,
+        spreadsheet_id: &String,
+        config_file: &str,
+    ) {
+        let mut texts = Vec::with_capacity(2);
+
+        for (sheet_index, sheet) in sheet_items.into_iter().enumerate() {
+            println!("> reading data from sheet tab: {}", sheet.properties.title);
+
+            let sheet_title = sheet.properties.title;
+
+            let sheet_vals = self
+                .sheets_client
+                .get_batch_values(
+                    &self.access_token,
+                    spreadsheet_id,
+                    vec![sheet_title.clone()],
+                )
+                .expect("failed to retrieve speadsheet data");
+
+            for val_range in sheet_vals.value_ranges.into_iter() {
+                let (feedback_kind, graded_skills, statement_feedback) =
+                    self.collect_data(config_file, &sheet_title, val_range);
+
+                println!(">>> uploading grades to drive!");
+
+                self.save_grades(
+                    spreadsheet_id,
+                    &graded_skills.skills,
+                    &feedback_kind,
+                    MajorDimension::Columns,
+                    sheet_index,
+                )
+                .expect("failed to upload graded feedback");
+
+                println!(">>> collecting textual feedback!");
+
+                texts.push((feedback_kind, statement_feedback));
+            }
+        }
+
+        println!(">>> uploading textual feedback!");
+
+        self.save_text(spreadsheet_id, texts)
+            .expect("failed to upload text feedback");
     }
 
     pub fn add_summary_sheet(&self, spreadsheet_id: &str) -> Result<u64, Box<dyn std_err>> {
@@ -56,7 +107,29 @@ impl<'a> SpreadsheetClient<'a> {
         Ok(sheet_id)
     }
 
-    pub fn save_text(
+    fn collect_data(
+        &self,
+        cfg_filename: &str,
+        sheet_title: &str,
+        val_range: SpreadsheetValueRange,
+    ) -> (AssessmentKind, EmployeeSkills, EmployeeSkills) {
+        println!("scanning spreadsheet range: {}", val_range.range);
+
+        let feedback_kind = AssessmentKind::from_str(sheet_title)
+            .expect("failed to detect feedback kind based on sheet name");
+
+        let mut grade_skills =
+            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade));
+        let mut text_skills =
+            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text));
+
+        let offset = grade_skills.scan(2, &val_range.values);
+        text_skills.scan(offset + 2, &val_range.values);
+
+        (feedback_kind, grade_skills, text_skills)
+    }
+
+    fn save_text(
         &self,
         spreadsheet_id: &str,
         feedbacks: Vec<(AssessmentKind, EmployeeSkills)>,
@@ -98,7 +171,7 @@ impl<'a> SpreadsheetClient<'a> {
         Ok(())
     }
 
-    pub fn save_grades(
+    fn save_grades(
         &self,
         spreadsheet_id: &str,
         questions: &Vec<EmployeeSkill>,
