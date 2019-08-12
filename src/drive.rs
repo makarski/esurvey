@@ -30,7 +30,7 @@ impl<'a> SpreadsheetClient<'a> {
         sheet_items: Vec<Sheet>,
         spreadsheet_id: &String,
         config_file: &str,
-    ) {
+    ) -> Result<(), Box<dyn std_err>> {
         let mut texts = Vec::with_capacity(2);
 
         for (sheet_index, sheet) in sheet_items.into_iter().enumerate() {
@@ -38,18 +38,15 @@ impl<'a> SpreadsheetClient<'a> {
 
             let sheet_title = sheet.properties.title;
 
-            let sheet_vals = self
-                .sheets_client
-                .get_batch_values(
-                    &self.access_token,
-                    spreadsheet_id,
-                    vec![sheet_title.clone()],
-                )
-                .expect("failed to retrieve speadsheet data");
+            let sheet_vals = self.sheets_client.get_batch_values(
+                &self.access_token,
+                spreadsheet_id,
+                vec![sheet_title.clone()],
+            )?;
 
             for val_range in sheet_vals.value_ranges.into_iter() {
                 let (feedback_kind, graded_skills, statement_feedback) =
-                    self.collect_data(config_file, &sheet_title, val_range);
+                    self.collect_data(config_file, &sheet_title, val_range)?;
 
                 println!(">>> uploading grades to drive!");
 
@@ -59,8 +56,7 @@ impl<'a> SpreadsheetClient<'a> {
                     &feedback_kind,
                     MajorDimension::Columns,
                     sheet_index,
-                )
-                .expect("failed to upload graded feedback");
+                )?;
 
                 println!(">>> collecting textual feedback!");
 
@@ -70,8 +66,8 @@ impl<'a> SpreadsheetClient<'a> {
 
         println!(">>> uploading textual feedback!");
 
-        self.save_text(spreadsheet_id, texts)
-            .expect("failed to upload text feedback");
+        self.save_text(spreadsheet_id, texts)?;
+        Ok(())
     }
 
     pub fn add_summary_sheet(&self, spreadsheet_id: &str) -> Result<u64, Box<dyn std_err>> {
@@ -95,16 +91,21 @@ impl<'a> SpreadsheetClient<'a> {
             .batch_update_spreadsheet(self.access_token.as_str(), spreadsheet_id, &batch_update)
             .map(|response_body| {
                 // todo: find a better way to deal with the borrow checker
-
-                let mut sheet_id: u64 = 0;
                 for reply in response_body.replies.into_iter().take(1) {
-                    sheet_id = reply.add_sheet.unwrap().properties.sheet_id.unwrap();
+                    if let Some(sheet) = reply.add_sheet {
+                        if let Some(sheet_id) = sheet.properties.sheet_id {
+                            return Ok(sheet_id);
+                        }
+                    }
                 }
 
-                sheet_id
+                return Err(Box::from(format!(
+                    "error retrieving sheet id from the response. spreadsheet_id: {}",
+                    spreadsheet_id
+                )));
             })?;
 
-        Ok(sheet_id)
+        sheet_id
     }
 
     fn collect_data(
@@ -112,21 +113,21 @@ impl<'a> SpreadsheetClient<'a> {
         cfg_filename: &str,
         sheet_title: &str,
         val_range: SpreadsheetValueRange,
-    ) -> (AssessmentKind, EmployeeSkills, EmployeeSkills) {
+    ) -> Result<(AssessmentKind, EmployeeSkills, EmployeeSkills), Box<dyn std_err>> {
         println!("scanning spreadsheet range: {}", val_range.range);
 
-        let feedback_kind = AssessmentKind::from_str(sheet_title)
-            .expect("failed to detect feedback kind based on sheet name");
+        let feedback_kind = AssessmentKind::from_str(sheet_title)?;
 
         let mut grade_skills =
-            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade));
+            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade)?)?;
+
         let mut text_skills =
-            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text));
+            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text)?)?;
 
-        let offset = grade_skills.scan(2, &val_range.values);
-        text_skills.scan(offset + 2, &val_range.values);
+        let offset = grade_skills.scan(2, &val_range.values)?;
+        text_skills.scan(offset + 2, &val_range.values)?;
 
-        (feedback_kind, grade_skills, text_skills)
+        Ok((feedback_kind, grade_skills, text_skills))
     }
 
     fn save_text(

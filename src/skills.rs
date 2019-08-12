@@ -1,3 +1,4 @@
+use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::Display;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
@@ -107,7 +108,7 @@ pub struct EmployeeSkills {
 use std::collections::HashMap;
 
 impl EmployeeSkills {
-    pub fn new(raw_cfg: &Vec<Vec<String>>) -> Self {
+    pub fn new(raw_cfg: &Vec<Vec<String>>) -> Result<Self, Box<dyn std_err>> {
         let mut skill_map: HashMap<Skill, EmployeeSkill> = HashMap::new();
 
         println!("> raw_cfg: {:?}", raw_cfg);
@@ -115,12 +116,13 @@ impl EmployeeSkills {
         for row in raw_cfg.into_iter() {
             let category = row
                 .get(0)
-                .expect(format!("failed to retrieve config category from: {:?}", row).as_str());
+                .ok_or(format!("failed config category: {:?}", row).as_str())?;
+
             let template = row
                 .get(1)
-                .expect(format!("failed to retrieve config template from: {:?}", row).as_str());
+                .ok_or(format!("failed to retrieve config template from: {:?}", row).as_str())?;
 
-            let skill = Skill::from_str(category.as_str()).expect("failed category input");
+            let skill = Skill::from_str(category.as_str())?;
             if let Some(employee_skill) = skill_map.get_mut(&skill) {
                 println!(">> adding config template: {}: {}", &skill, template);
 
@@ -139,12 +141,12 @@ impl EmployeeSkills {
         skill_map.drain().for_each(|(_, es)| skills.push(es));
         skills.sort_by(|a, b| a.cmp(b));
 
-        EmployeeSkills {
+        Ok(EmployeeSkills {
             skills: skills,
             // skill_map: skill_map,
             max: None,
             min: None,
-        }
+        })
     }
 
     fn find_skill(&mut self, question: &String) -> Option<&mut EmployeeSkill> {
@@ -161,13 +163,19 @@ impl EmployeeSkills {
         None
     }
 
-    pub fn scan(&mut self, skip: usize, from_raw: &Vec<Vec<String>>) -> usize {
+    pub fn scan(
+        &mut self,
+        skip: usize,
+        from_raw: &Vec<Vec<String>>,
+    ) -> Result<usize, Box<dyn std_err>> {
         let answers = from_raw.into_iter().skip(skip);
         let mut answered_count: usize = 0;
 
         for answer in answers {
             let mut per_category = answer.into_iter();
-            let question_stmt = per_category.next().unwrap();
+            let question_stmt = per_category
+                .next()
+                .ok_or("error scanning category question")?;
 
             let skill = match self.find_skill(question_stmt) {
                 Some(t) => t,
@@ -182,13 +190,13 @@ impl EmployeeSkills {
                     &question_stmt, grade_str
                 );
 
-                skill.add_response(grade_str);
+                skill.add_response(grade_str)?;
             }
 
             answered_count += 1;
         }
 
-        answered_count
+        Ok(answered_count)
     }
 
     // pub fn highest(mut self) -> EmployeeSkill {
@@ -249,12 +257,15 @@ impl EmployeeSkill {
         self.question_count += 1;
     }
 
-    pub fn add_response(&mut self, v: &str) {
+    pub fn add_response(&mut self, v: &str) -> Result<(), Box<dyn std_err>> {
         if self.name.is_graded() {
-            self.add_grade(v.parse::<u32>().expect("could not parse the grade"))
-        } else {
-            self.texts.push(v.to_owned())
+            v.parse::<u32>()
+                .map(|grade| self.add_grade(grade))
+                .map_err(|err| format!("error parsing grade: {}", err.to_string()))?;
         }
+
+        self.texts.push(v.to_owned());
+        Ok(())
     }
 
     fn add_grade(&mut self, v: u32) {
