@@ -50,18 +50,21 @@ fn main() {
         .add_summary_sheet(&flags.spreadsheet_id)
         .expect("failed to create summary sheet");
 
-    spreadsheet_client.build_summary(
-        spreadsheet.sheets,
-        &flags.spreadsheet_id,
-        &flags.config_file,
-    );
+    spreadsheet_client
+        .build_summary(
+            spreadsheet.sheets,
+            &flags.spreadsheet_id,
+            &flags.config_file,
+        )
+        .expect("failed building summary");
 
     chart::add_summary_chart(
         &client,
         &token.access_token,
         &flags.spreadsheet_id,
         summary_sheet_id,
-    );
+    )
+    .expect("failed to add summary chart");
 }
 
 struct Flags {

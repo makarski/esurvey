@@ -3,6 +3,7 @@ use crate::sheets;
 use sheets::basic_chart::*;
 use sheets::spreadsheets::{ChartSpec, EmbeddedChart, EmbeddedObjectPosition};
 use sheets::spreadsheets_batch_update::*;
+use std::error::Error;
 
 // https://developers.google.com/sheets/api/samples/charts#add_a_column_chart
 pub fn add_summary_chart(
@@ -10,7 +11,7 @@ pub fn add_summary_chart(
     token: &str,
     spreadsheet_id: &str,
     sheet_id: u64,
-) {
+) -> Result<(), Box<dyn Error>> {
     let chart_spec = ChartSpec {
         title: Some("Team Feedback and Self-Assessment SCRIPT".to_owned()),
         basic_chart: Some(BasicChartSpec {
@@ -96,7 +97,6 @@ pub fn add_summary_chart(
         include_spreadsheet_in_response: false,
     };
 
-    client
-        .batch_update_spreadsheet(token, spreadsheet_id, &chart_req)
-        .expect("failed to add chart");
+    client.batch_update_spreadsheet(token, spreadsheet_id, &chart_req)?;
+    Ok(())
 }

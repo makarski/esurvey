@@ -1,4 +1,5 @@
 use csv;
+use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
@@ -16,13 +17,17 @@ pub enum AssessmentKind {
 }
 
 impl AssessmentKind {
-    pub fn config<P: AsRef<Path>>(&self, filename: P, resp_kind: ResponseKind) -> Vec<Vec<String>> {
-        let file = File::open(filename).expect("failed to open config file");
+    pub fn config<P: AsRef<Path>>(
+        &self,
+        filename: P,
+        resp_kind: ResponseKind,
+    ) -> Result<Vec<Vec<String>>, Box<dyn std_err>> {
+        let file = File::open(filename)?;
 
         let mut rdr = csv::Reader::from_reader(file);
         let mut out: Vec<Vec<String>> = Vec::new();
         for result in rdr.records() {
-            let record = result.expect("failed parsing the entry");
+            let record = result?;
 
             let mut template_cfgs = record.iter().take(2);
 
@@ -64,7 +69,7 @@ impl AssessmentKind {
             out.push(collected);
         }
 
-        out
+        Ok(out)
     }
 }
 
