@@ -36,7 +36,7 @@ pub struct BatchUpdateResponse {
     pub replies: Vec<Response>,
     /// The spreadsheet after updates were applied.
     /// This is only set if [BatchUpdateSpreadsheetRequest.include_spreadsheet_in_response] is `true`.
-    pub updated_spreadsheet: super::Spreadsheet,
+    pub updated_spreadsheet: Option<super::Spreadsheet>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
