@@ -10,7 +10,7 @@ use std::str::FromStr;
 const SELF_ASSESSMENT_STR: &str = "self-assessment";
 const TEAM_FEEDBACK_STR: &str = "team-feedback";
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum AssessmentKind {
     TeamFeedback,
     SelfAssessment,

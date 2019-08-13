@@ -14,6 +14,10 @@ pub struct SpreadsheetValueRange {
 }
 
 impl SpreadsheetValueRange {
+    pub fn set_values(&mut self, v: Vec<Vec<String>>) {
+        self.values = v;
+    }
+
     pub fn add_value(&mut self, v: Vec<String>) {
         self.values.push(v)
     }
