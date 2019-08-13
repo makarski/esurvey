@@ -24,7 +24,6 @@ impl<'a> SpreadsheetClient<'a> {
         }
     }
 
-    // todo: add error returns
     pub fn build_summary(
         &self,
         sheet_items: Vec<Sheet>,

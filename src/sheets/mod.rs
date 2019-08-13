@@ -10,6 +10,10 @@ mod spreadsheets_sheets {}
 
 pub mod basic_chart;
 
+fn io_other_err(msg: String) -> Box<dyn Error> {
+    Box::new(io_err::new(io_err_kind::Other, msg))
+}
+
 pub struct Client {
     _http_client: reqwest::Client,
 }
@@ -38,7 +42,7 @@ impl Client {
 
         match resp.status().is_success() {
             true => Ok(resp.json::<Spreadsheet>()?),
-            _ => panic!(resp.text()?), // todo: change to return the error
+            _ => Err(io_other_err(resp.text()?)),
         }
     }
 
@@ -62,11 +66,9 @@ impl Client {
             .body(serde_json::to_vec(req)?)
             .send()?;
 
-        // println!("{}", resp.text().unwrap());
-
         match resp.status().is_success() {
             true => Ok(resp.json::<spreadsheets_batch_update::BatchUpdateResponse>()?),
-            _ => panic!(resp.text()?),
+            _ => Err(io_other_err(resp.text()?)),
         }
     }
 
@@ -118,10 +120,7 @@ impl Client {
 
         match resp.status().is_success() {
             true => Ok(()),
-            _ => Err(Box::new(io_err::new(
-                io_err_kind::InvalidData,
-                resp.text()?,
-            ))),
+            _ => Err(io_other_err(resp.text()?)),
         }
     }
 
@@ -149,10 +148,7 @@ impl Client {
 
         match resp.status().is_success() {
             true => Ok(()),
-            _ => Err(Box::new(io_err::new(
-                io_err_kind::InvalidData,
-                resp.text()?,
-            ))),
+            _ => Err(io_other_err(resp.text()?)),
         }
     }
 }
