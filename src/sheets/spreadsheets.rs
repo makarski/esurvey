@@ -109,7 +109,7 @@ pub struct NamedRange {}
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperMetadata {}
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Color {
     /// The amount of red in the color as a value in the interval [0, 1].
@@ -176,15 +176,28 @@ pub struct ChartSpec {
     // todo: implement other chart types
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TextFormat {
+    #[serde(default)]
     pub foreground_color: Color,
+
+    #[serde(default)]
     pub font_family: String,
+
+    #[serde(default)]
     pub font_size: u64,
+
+    #[serde(default)]
     pub bold: bool,
+
+    #[serde(default)]
     pub italic: bool,
+
+    #[serde(default)]
     pub strikethrough: bool,
+
+    #[serde(default)]
     pub underline: bool,
 }
 
@@ -221,6 +234,7 @@ pub struct EmbeddedObjectPosition {
     pub overlay_position: Option<OverlayPosition>,
     // If true, the embedded object is put on a new sheet whose ID is chosen for you.
     // Used only when writing.
+    #[serde(default)]
     pub new_sheet: bool,
 }
 

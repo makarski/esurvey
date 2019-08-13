@@ -9,10 +9,19 @@ pub struct BasicChartSpec {
     pub domains: Vec<BasicChartDomain>,
     pub series: Vec<BasicChartSeries>,
     pub header_count: u64,
+
+    #[serde(default)]
     pub three_dimensional: bool,
+
+    #[serde(default)]
     pub interpolate_nulls: bool,
+
+    #[serde(default)]
     pub stacked_type: BasicChartStackedType,
+
+    #[serde(default)]
     pub line_smoothing: bool,
+
     pub compare_mode: BasicChartCompareMode,
 }
 
@@ -52,11 +61,13 @@ pub enum BasicChartLegendPosition {
 
     // The legend is rendered on the bottom of the chart.
     BottomLegend,
+
     // The legend is rendered on the left of the chart.
     LeftLegend,
 
     // The legend is rendered on the right of the chart.
     RightLegend,
+
     // The legend is rendered on the top of the chart.
     TopLegend,
 
@@ -68,9 +79,11 @@ pub enum BasicChartLegendPosition {
 #[serde(rename_all = "camelCase")]
 pub struct BasicChartAxis {
     pub position: BasicChartAxisPosition,
-    pub title: String,
-    pub format: spreadsheets::TextFormat,
-    pub title_text_position: spreadsheets::TextPosition,
+    pub title: Option<String>,
+    pub format: Option<spreadsheets::TextFormat>,
+    pub title_text_position: Option<spreadsheets::TextPosition>,
+    #[serde(default)]
+    pub view_window_options: ChartAxisViewWindowOptions,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -93,6 +106,7 @@ pub struct BasicChartDomain {
     // The data of the domain. For example, if charting stock prices over time, this is the data representing the dates.
     pub domain: ChartData,
     // True to reverse the order of the domain values (horizontal axis).
+    #[serde(default)]
     pub reversed: bool,
 }
 
@@ -232,6 +246,12 @@ pub enum BasicChartStackedType {
     PercentStacked,
 }
 
+impl Default for BasicChartStackedType {
+    fn default() -> Self {
+        BasicChartStackedType::BasicChartStackedTypeUnspecified
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BasicChartCompareMode {
@@ -243,4 +263,45 @@ pub enum BasicChartCompareMode {
 
     // All data elements with the same category (e.g., domain value) are highlighted and shown in the tooltip.
     Category,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartAxisViewWindowOptions {
+    // The minimum numeric value to be shown in this view window.
+    // If unset, will automatically determine a minimum value that looks good for the data.
+    #[serde(default)]
+    pub view_window_min: i32,
+
+    // The maximum numeric value to be shown in this view window.
+    // If unset, will automatically determine a maximum value that looks good for the data.
+    #[serde(default)]
+    pub view_window_max: i32,
+
+    // The view window's mode.
+    #[serde(default)]
+    pub view_window_mode: ViewWindowMode,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ViewWindowMode {
+    //  The default view window mode used in the Sheets editor for this chart type.
+    // In most cases, if set, the default mode is equivalent to PRETTY .
+    DefaultViewWindowMode,
+
+    //  Do not use. Represents that the currently set mode is not supported by the API.
+    ViewWindowModeUnsupported,
+
+    //  Follows the min and max exactly if specified. If a value is unspecified, it will fall back to the PRETTY value.
+    Explicit,
+
+    //  Chooses a min and max that make the chart look good. Both min and max are ignored in this mode.
+    Pretty,
+}
+
+impl Default for ViewWindowMode {
+    fn default() -> Self {
+        ViewWindowMode::DefaultViewWindowMode
+    }
 }
