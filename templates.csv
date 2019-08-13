@@ -4,7 +4,7 @@ Self-Assessment,grade,Adaptability,I am open to work on the tasks not entirely r
 Self-Assessment,grade,Attitude,I aim to create a positive working environment around myself.
 Self-Assessment,grade,Attitude,I react constructively after making a mistake.
 Self-Assessment,grade,Communication,I communicate ideas well verbally.
-Self-Assessment,grade,Communication,I don\'t have misunderstandings with my teammates.
+Self-Assessment,grade,Communication,"I don't have misunderstandings with my teammates."
 Self-Assessment,grade,Communication,I communicate ideas well in writing.
 Self-Assessment,grade,Cross-functional Knowledge,I am open to learn new things and expand my professional expertise.
 Self-Assessment,grade,Cross-functional Knowledge,"I have knowledge and experience that goes beyond my job responsibilities, i.e., tools, methodologies, frameworks."
@@ -37,7 +37,7 @@ Team-Feedback,grade,Adaptability,is open to work on the tasks not entirely relat
 Team-Feedback,grade,Attitude,aims to create a positive working environment around him/herself.
 Team-Feedback,grade,Attitude,reacts constructively after making a mistake.
 Team-Feedback,grade,Communication,communicates ideas well verbally.
-Team-Feedback,grade,Communication,I don\'t have misunderstandings with
+Team-Feedback,grade,Communication,"I don't have misunderstandings with"
 Team-Feedback,grade,Communication,communicates ideas well in writing.
 Team-Feedback,grade,Cross-functional Knowledge,is open to learn new things and expand his/her professional expertise.
 Team-Feedback,grade,Cross-functional Knowledge,"has knowledge and experience that goes beyond their job responsibilities, i.e. tools, methodologies, frameworks."
@@ -46,7 +46,7 @@ Team-Feedback,grade,Dependability,follows team standards and processes.
 Team-Feedback,grade,Dependability,pays attention to detail.
 Team-Feedback,grade,Initiative,"is proactive suggesting solutions and improvements, .e. code quality, process, etc."
 Team-Feedback,grade,Initiative,takes fast and informed decisions.
-Team-Feedback,grade,Leadership,I trust the decisions that takes.
+Team-Feedback,grade,Leadership,I trust the decisions that
 Team-Feedback,grade,Leadership,constructively handles (critical) feedback.
 Team-Feedback,grade,Leadership,provides constructive feedback to the team and me.
 Team-Feedback,grade,Leadership,values contributions and opinions of other teammates.

@@ -233,7 +233,7 @@ impl EmployeeSkills {
 #[derive(Eq)]
 pub struct EmployeeSkill {
     pub name: Skill,
-    pub question_count: u32,
+    pub question_count: usize,
 
     question_templates: Vec<String>,
 

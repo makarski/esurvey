@@ -16,6 +16,11 @@ pub struct SpreadsheetClient<'a> {
     access_token: String,
 }
 
+pub struct Summary {
+    texts: Vec<(AssessmentKind, EmployeeSkills)>,
+    grades: Vec<(AssessmentKind, EmployeeSkills)>,
+}
+
 impl<'a> SpreadsheetClient<'a> {
     pub fn new(sheets_client: &'a sheets::Client, access_token: &str) -> Self {
         SpreadsheetClient {
@@ -29,10 +34,11 @@ impl<'a> SpreadsheetClient<'a> {
         sheet_items: Vec<Sheet>,
         spreadsheet_id: &String,
         config_file: &str,
-    ) -> Result<(), Box<dyn std_err>> {
-        let mut texts = Vec::with_capacity(2);
+    ) -> Result<Summary, Box<dyn std_err>> {
+        let mut texts: Vec<(AssessmentKind, EmployeeSkills)> = Vec::with_capacity(2);
+        let mut grades: Vec<(AssessmentKind, EmployeeSkills)> = Vec::new();
 
-        for (sheet_index, sheet) in sheet_items.into_iter().enumerate() {
+        for sheet in sheet_items.into_iter() {
             println!("> reading data from sheet tab: {}", sheet.properties.title);
 
             let sheet_title = sheet.properties.title;
@@ -47,34 +53,41 @@ impl<'a> SpreadsheetClient<'a> {
                 let (feedback_kind, graded_skills, statement_feedback) =
                     self.collect_data(config_file, &sheet_title, val_range)?;
 
-                println!(">>> uploading grades to drive!");
-
-                self.save_grades(
-                    spreadsheet_id,
-                    &graded_skills.skills,
-                    &feedback_kind,
-                    MajorDimension::Columns,
-                    sheet_index,
-                )?;
+                println!(">>> collecting grades!");
+                grades.push((feedback_kind.clone(), graded_skills));
 
                 println!(">>> collecting textual feedback!");
-
-                texts.push((feedback_kind, statement_feedback));
+                texts.push((feedback_kind.clone(), statement_feedback));
             }
         }
 
-        println!(">>> uploading textual feedback!");
+        Ok(Summary {
+            texts: texts,
+            grades: grades,
+        })
+    }
 
-        self.save_text(spreadsheet_id, texts)?;
+    pub fn save_summary(
+        &self,
+        range: &str,
+        spreadsheet_id: &str,
+        summary: Summary,
+    ) -> Result<(), Box<dyn std_err>> {
+        self.save_grades(range, spreadsheet_id, summary.grades)?;
+        self.save_text(range, spreadsheet_id, summary.texts)?;
         Ok(())
     }
 
-    pub fn add_summary_sheet(&self, spreadsheet_id: &str) -> Result<u64, Box<dyn std_err>> {
+    pub fn add_summary_sheet(
+        &self,
+        title: &str,
+        spreadsheet_id: &str,
+    ) -> Result<u64, Box<dyn std_err>> {
         let batch_update = SpreadsheetBatchUpdate {
             requests: vec![Request {
                 add_sheet: Some(AddSheetRequest {
                     properties: SheetProperties {
-                        title: "Chart and Summary".to_owned(),
+                        title: title.to_owned(),
                         ..Default::default()
                     },
                 }),
@@ -129,13 +142,61 @@ impl<'a> SpreadsheetClient<'a> {
         Ok((feedback_kind, grade_skills, text_skills))
     }
 
+    fn save_grades(
+        &self,
+        range: &str,
+        spreadsheet_id: &str,
+        grades: Vec<(AssessmentKind, EmployeeSkills)>,
+    ) -> Result<(), Box<dyn std_err>> {
+        let mut spreadsheet_values = SpreadsheetValueRange {
+            range: range.to_owned(),
+            major_dimension: MajorDimension::Rows,
+            values: Vec::with_capacity(3),
+        };
+
+        let mut aggregated: Vec<Vec<String>> = vec![
+            vec!["Feedback Kind / Category".to_owned()],
+            vec![AssessmentKind::TeamFeedback.to_string()],
+            vec![AssessmentKind::SelfAssessment.to_string()],
+        ];
+
+        for (index, (feedback_kind, graded_skills)) in grades.into_iter().enumerate() {
+            for question in &graded_skills.skills {
+                if index == 0 {
+                    aggregated[0].push(question.name.to_string());
+                }
+
+                match feedback_kind {
+                    AssessmentKind::TeamFeedback => {
+                        aggregated[1].push(question.avg().to_string());
+                    }
+                    AssessmentKind::SelfAssessment => {
+                        aggregated[2].push(question.avg().to_string())
+                    }
+                }
+            }
+        }
+
+        spreadsheet_values.set_values(aggregated);
+
+        self.sheets_client.append_values(
+            &self.access_token,
+            spreadsheet_id.to_owned(),
+            range.to_owned(),
+            &spreadsheet_values,
+        )?;
+
+        Ok(())
+    }
+
     fn save_text(
         &self,
+        range: &str,
         spreadsheet_id: &str,
         feedbacks: Vec<(AssessmentKind, EmployeeSkills)>,
     ) -> Result<(), Box<dyn std_err>> {
         let mut spreadsheet_values = SpreadsheetValueRange {
-            range: "Chart and Summary".to_owned(),
+            range: range.to_owned(),
             major_dimension: MajorDimension::Rows,
             values: Vec::new(),
         };
@@ -164,55 +225,7 @@ impl<'a> SpreadsheetClient<'a> {
         self.sheets_client.append_values(
             &self.access_token,
             spreadsheet_id.to_owned(),
-            "Chart and Summary".to_owned(),
-            &spreadsheet_values,
-        )?;
-
-        Ok(())
-    }
-
-    fn save_grades(
-        &self,
-        spreadsheet_id: &str,
-        questions: &Vec<EmployeeSkill>,
-        feedback_kind: &AssessmentKind,
-        major_dimension: MajorDimension,
-        sheet_index: usize,
-    ) -> Result<(), Box<dyn std_err>> {
-        let mut spreadsheet_values = SpreadsheetValueRange {
-            range: "Chart and Summary".to_owned(),
-            major_dimension: major_dimension,
-            values: Vec::with_capacity(questions.len() as usize + 1),
-        };
-
-        let generate_col_value = |sheet_index: usize, vals: Vec<String>| -> Vec<String> {
-            match sheet_index {
-                0 => vals,
-                _ => vals[1..].to_vec(),
-            }
-        };
-
-        spreadsheet_values.add_value(generate_col_value(
-            sheet_index,
-            vec!["".to_owned(), feedback_kind.to_string()],
-        ));
-
-        for question in questions {
-            let response_cell: String = match question.name.is_graded() {
-                true => question.avg().to_string(),
-                false => question.txt(),
-            };
-
-            spreadsheet_values.add_value(generate_col_value(
-                sheet_index,
-                vec![question.name.to_string(), response_cell],
-            ));
-        }
-
-        self.sheets_client.append_values(
-            &self.access_token,
-            spreadsheet_id.to_owned(),
-            "Chart and Summary".to_owned(),
+            range.to_owned(),
             &spreadsheet_values,
         )?;
 

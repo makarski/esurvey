@@ -17,6 +17,8 @@ mod drive;
 mod sheets;
 mod skills;
 
+const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
+
 fn main() {
     let flags = parse_flags().expect("could not parse input flags");
     println!("entered id: {}", flags.spreadsheet_id);
@@ -46,17 +48,22 @@ fn main() {
         .expect("failed to retrieve spreadsheet info");
 
     let spreadsheet_client = drive::SpreadsheetClient::new(&client, &token.access_token);
-    let summary_sheet_id = spreadsheet_client
-        .add_summary_sheet(&flags.spreadsheet_id)
-        .expect("failed to create summary sheet");
 
-    spreadsheet_client
+    let summary = spreadsheet_client
         .build_summary(
             spreadsheet.sheets,
             &flags.spreadsheet_id,
             &flags.config_file,
         )
         .expect("failed building summary");
+
+    let summary_sheet_id = spreadsheet_client
+        .add_summary_sheet(SUMMARY_SHEET_NAME, &flags.spreadsheet_id)
+        .expect("failed to create summary sheet");
+
+    spreadsheet_client
+        .save_summary(SUMMARY_SHEET_NAME, &flags.spreadsheet_id, summary)
+        .expect("failed uploading the summary");
 
     chart::add_summary_chart(
         &client,
