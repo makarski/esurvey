@@ -1,0 +1,33 @@
+Assessment Kind,Response Kind,Category,Template
+Team-Feedback,grade,Communication,"communicates clearly, efficiently and in a structured manner"
+Team-Feedback,grade,Communication,selects language tailored to the experience of the audience
+Team-Feedback,grade,Communication,"listens actively; acknowledges perspectives and ideas of the others"
+Team-Feedback,grade,Communication,provides timely feedback and openly shares opinion
+Team-Feedback,grade,Problem Solving,structures information into manageable chunks and sets reasonable focus areas
+Team-Feedback,grade,Problem Solving,solves problems with pragmatic mentality
+Team-Feedback,grade,Problem Solving,designs and delivers high-quality and accurate output
+Team-Feedback,grade,Problem Solving,considers and understands complex topics and their impact
+Team-Feedback,grade,Organization,"deploys his/her time in an efficient, cost conscious manner"
+Team-Feedback,grade,Organization,is a self-starter and can efficiently work with ambiguous requirements
+Team-Feedback,grade,Teamwork,is actively using expertise of other teams within the company.
+Team-Feedback,grade,Teamwork,has established productive relationship with the team.
+Team-Feedback,grade,Teamwork,sets clear expectations on taken commitments.
+Team-Feedback,grade,Teamwork,values time of his/her colleagues and is mindful of interruptions.
+Team-Feedback,text,Strengths,"strongest skills and qualities; how do they help them to stand out"
+Team-Feedback,text,Improvement Opportunities,What skills and qualities would you suggest
+Self-Assessment,grade,Communication,"I communicate clearly, efficiently and in a structured manner."
+Self-Assessment,grade,Communication,I select language tailored to the experience of the audience.
+Self-Assessment,grade,Communication,"I listen actively; acknowledge perspectives and ideas of the others."
+Self-Assessment,grade,Communication,I provide timely feedback and openly share opinion.
+Self-Assessment,grade,Problem Solving,I structure information into manageable chunks and set reasonable focus areas.
+Self-Assessment,grade,Problem Solving,I solve problems with pragmatic mentality.
+Self-Assessment,grade,Problem Solving,I design and deliver high-quality and accurate output.
+Self-Assessment,grade,Problem Solving,I consider and understand complex topics and their impact.
+Self-Assessment,grade,Organization,"I deploy my time in an efficient, cost conscious manner."
+Self-Assessment,grade,Organization,I am a self-starter and can efficiently work with ambiguous requirements.
+Self-Assessment,grade,Teamwork,I am actively using expertise of other teams within the company.
+Self-Assessment,grade,Teamwork,I have established productive relationship with the team.
+Self-Assessment,grade,Teamwork,I set clear expectations on taken commitments.
+Self-Assessment,grade,Teamwork,I value time of my colleagues and am mindful of interruptions.
+Self-Assessment,text,Strengths,"Write down your strongest skills and qualities; how do they help you to stand out".
+Self-Assessment,text,Improvement Opportunities,What skills and qualities would you like to invest into in the next 6 to 12 months.

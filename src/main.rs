@@ -10,19 +10,24 @@ use std::env::args;
 use std::error::Error as std_err;
 use std::io::{stdin, Error as io_err, ErrorKind as io_err_kind};
 use std::path::PathBuf;
+use std::str::FromStr;
 
+mod appsscript;
 mod chart;
+mod cmd;
 mod config;
 mod drive;
 mod sheets;
 mod skills;
 
+use config::AssessmentKind::{SelfAssessment, TeamFeedback};
+
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
 
 fn main() {
-    let flags = parse_flags().expect("could not parse input flags");
-    println!("entered id: {}", flags.spreadsheet_id);
-    println!("entered templates file: {}", flags.config_file);
+    cmd::Cmd::from_str(&args().nth(1).expect("failed to retrieve command name"))
+        .map(|c| c.run().expect("failed to execute generate"))
+        .expect("failed to execute command");
 
     let crd_path = env::var("OAUTH_CFG_FILE").expect("failed to retrieve OAUTH_CFG_FILE from env");
     let auth_client = gauth::Auth::new(
@@ -33,6 +38,7 @@ fn main() {
             "https://www.googleapis.com/auth/drive.file".to_owned(),
             "https://www.googleapis.com/auth/spreadsheets".to_owned(),
             "https://www.googleapis.com/auth/spreadsheets.readonly".to_owned(),
+            "https://www.googleapis.com/auth/script.projects".to_owned(),
         ],
         PathBuf::from(crd_path),
     );
@@ -40,6 +46,10 @@ fn main() {
     let token = auth_client
         .access_token(handle_auth)
         .expect("failed to retrieve access token");
+
+    let flags = parse_flags().expect("could not parse input flags");
+    println!("entered id: {}", flags.spreadsheet_id);
+    println!("entered templates file: {}", flags.config_file);
 
     let client = sheets::Client::new();
 
@@ -70,6 +80,11 @@ fn main() {
         &token.access_token,
         &flags.spreadsheet_id,
         summary_sheet_id,
+        format!(
+            "Chart: {} and {}",
+            TeamFeedback.to_string(),
+            SelfAssessment.to_string()
+        ),
     )
     .expect("failed to add summary chart");
 }

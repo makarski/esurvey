@@ -28,10 +28,10 @@ Self-Assessment,grade,Teamwork,I am a team player.
 Self-Assessment,grade,Teamwork,I collaborate and build a relationship with the team.
 Self-Assessment,grade,Tech. Expertise,I possess all required (tech.) skills for doing my job.
 Self-Assessment,grade,Tech. Expertise,I can teach to other teammates in some/any technical discipline.
-Self-Assessment,text,New Skill,New Skill
-Self-Assessment,text,Skill to Acquire,Skill to Acquire
+Self-Assessment,text,New Skill,This is what my team or individual teammates have learned from me
+Self-Assessment,text,Skill to Acquire,This is what I still could learn from my team
 Self-Assessment,text,Strengths,Strengths
-Self-Assessment,text,Improvement Opportunities,Improvement Opportunities
+Self-Assessment,text,Improvement Opportunities,Improvements
 Team-Feedback,grade,Adaptability,constructively approaches new and unexpected events or announcements.
 Team-Feedback,grade,Adaptability,is open to work on the tasks not entirely related to his/her position.
 Team-Feedback,grade,Attitude,aims to create a positive working environment around him/herself.

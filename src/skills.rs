@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::Display;
@@ -100,12 +101,7 @@ impl Display for Skill {
 
 pub struct EmployeeSkills {
     pub skills: Vec<EmployeeSkill>,
-    // skill_map: HashMap<Skill, EmployeeSkill>,
-    max: Option<EmployeeSkill>,
-    min: Option<EmployeeSkill>,
 }
-
-use std::collections::HashMap;
 
 impl EmployeeSkills {
     pub fn new(raw_cfg: &Vec<Vec<String>>) -> Result<Self, Box<dyn std_err>> {
@@ -141,12 +137,7 @@ impl EmployeeSkills {
         skill_map.drain().for_each(|(_, es)| skills.push(es));
         skills.sort_by(|a, b| a.cmp(b));
 
-        Ok(EmployeeSkills {
-            skills: skills,
-            // skill_map: skill_map,
-            max: None,
-            min: None,
-        })
+        Ok(EmployeeSkills { skills: skills })
     }
 
     fn find_skill(&mut self, question: &String) -> Option<&mut EmployeeSkill> {
@@ -198,45 +189,12 @@ impl EmployeeSkills {
 
         Ok(answered_count)
     }
-
-    // pub fn highest(mut self) -> EmployeeSkill {
-    //     match self.max {
-    //         Some(t) => t,
-    //         None => {
-    //             for es in self.skills.into_iter() {
-    //                 if self.max.as_ref().is_none() || es.avg() > self.max.as_ref().unwrap().avg() {
-    //                     self.max = Some(es)
-    //                 }
-    //             }
-
-    //             self.max.unwrap()
-    //         }
-    //     }
-    // }
-
-    // pub fn lowest(mut self) -> EmployeeSkill {
-    //     match self.min {
-    //         Some(t) => t,
-    //         None => {
-    //             for es in self.skills.into_iter() {
-    //                 if self.min.as_ref().is_none() || self.min.as_ref().unwrap().avg() < es.avg() {
-    //                     self.min = Some(es)
-    //                 }
-    //             }
-
-    //             self.min.unwrap()
-    //         }
-    //     }
-    // }
 }
 
 #[derive(Eq)]
 pub struct EmployeeSkill {
     pub name: Skill,
-    pub question_count: usize,
-
     question_templates: Vec<String>,
-
     grades: Vec<u32>,
     texts: Vec<String>,
 }
@@ -246,7 +204,6 @@ impl EmployeeSkill {
         EmployeeSkill {
             name: name,
             question_templates: Vec::new(),
-            question_count: 0,
             grades: Vec::new(),
             texts: Vec::new(),
         }
@@ -254,7 +211,6 @@ impl EmployeeSkill {
 
     fn add_template(&mut self, v: String) {
         self.question_templates.push(v);
-        self.question_count += 1;
     }
 
     pub fn add_response(&mut self, v: &str) -> Result<(), Box<dyn std_err>> {
@@ -278,14 +234,6 @@ impl EmployeeSkill {
 
     pub fn txt(&self) -> String {
         self.texts.join("\n")
-    }
-
-    pub fn mark_answered(&mut self) {
-        self.question_count -= 1
-    }
-
-    pub fn not_answered(&self) -> bool {
-        self.question_count > 0
     }
 }
 
