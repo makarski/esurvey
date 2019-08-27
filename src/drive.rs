@@ -1,6 +1,6 @@
 use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
-use crate::skills::{EmployeeSkill, EmployeeSkills};
+use crate::skills::EmployeeSkills;
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
@@ -130,11 +130,15 @@ impl<'a> SpreadsheetClient<'a> {
 
         let feedback_kind = AssessmentKind::from_str(sheet_title)?;
 
-        let mut grade_skills =
-            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Grade)?)?;
+        let mut grade_skills = EmployeeSkills::new(
+            &feedback_kind.config(cfg_filename, ResponseKind::Grade)?,
+            ResponseKind::Grade,
+        )?;
 
-        let mut text_skills =
-            EmployeeSkills::new(&feedback_kind.config(cfg_filename, ResponseKind::Text)?)?;
+        let mut text_skills = EmployeeSkills::new(
+            &feedback_kind.config(cfg_filename, ResponseKind::Text)?,
+            ResponseKind::Text,
+        )?;
 
         let offset = grade_skills.scan(2, &val_range.values)?;
         text_skills.scan(offset + 2, &val_range.values)?;
@@ -154,30 +158,45 @@ impl<'a> SpreadsheetClient<'a> {
             values: Vec::with_capacity(3),
         };
 
-        let mut aggregated: Vec<Vec<String>> = vec![
-            vec!["Feedback Kind / Category".to_owned()],
-            vec![AssessmentKind::TeamFeedback.to_string()],
-            vec![AssessmentKind::SelfAssessment.to_string()],
-        ];
+        let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
+
+        let header_name = String::from("header");
+        aggregated.insert(
+            header_name.clone(),
+            vec![String::from("Feedback Kind / Category")],
+        );
 
         for (index, (feedback_kind, graded_skills)) in grades.into_iter().enumerate() {
             for question in &graded_skills.skills {
                 if index == 0 {
-                    aggregated[0].push(question.name.to_string());
+                    aggregated
+                        .entry(header_name.clone())
+                        .and_modify(|e| e.push(question.name.clone()));
                 }
 
                 match feedback_kind {
-                    AssessmentKind::TeamFeedback => {
-                        aggregated[1].push(question.avg().to_string());
-                    }
-                    AssessmentKind::SelfAssessment => {
-                        aggregated[2].push(question.avg().to_string())
-                    }
-                }
+                    AssessmentKind(ref name) => aggregated
+                        .entry(name.clone())
+                        .and_modify(|e| e.push(question.avg().to_string()))
+                        .or_insert(vec![name.clone(), question.avg().to_string()]),
+                };
             }
         }
 
-        spreadsheet_values.set_values(aggregated);
+        let header_row = aggregated
+            .get(&header_name)
+            .ok_or("error retrieving the header row")?
+            .deref()
+            .to_vec();
+        spreadsheet_values.add_value(header_row);
+
+        for (key, val) in aggregated.iter() {
+            if *key == header_name {
+                continue;
+            }
+
+            spreadsheet_values.add_value(val.deref().to_vec());
+        }
 
         self.sheets_client.append_values(
             &self.access_token,

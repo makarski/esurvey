@@ -18,6 +18,6 @@ mod skills;
 
 fn main() {
     cmd::Cmd::from_str(&args().nth(1).expect("failed to retrieve command name"))
-        .map(|c| c.run().expect("failed to execute generate"))
+        .map(|c| c.run().expect("failed to run the application"))
         .expect("failed to execute command");
 }

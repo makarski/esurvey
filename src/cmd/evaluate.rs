@@ -3,11 +3,11 @@ use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
 
 use crate::chart;
-use crate::config::AssessmentKind::{SelfAssessment, TeamFeedback};
 use crate::drive;
 use crate::sheets;
 
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
+const CHART_NAME: &str = "Chart Results";
 
 pub struct Evaluator {
     _auth_client: gauth::Auth,
@@ -47,11 +47,7 @@ impl Evaluator {
             &token.access_token,
             &flags.spreadsheet_id,
             summary_sheet_id,
-            format!(
-                "Chart: {} and {}",
-                TeamFeedback.to_string(),
-                SelfAssessment.to_string()
-            ),
+            String::from(CHART_NAME),
         )?;
 
         Ok(())
