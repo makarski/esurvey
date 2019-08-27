@@ -11,9 +11,10 @@ pub fn add_summary_chart(
     token: &str,
     spreadsheet_id: &str,
     sheet_id: u64,
+    title: String,
 ) -> Result<(), Box<dyn Error>> {
     let chart_spec = ChartSpec {
-        title: Some("Team Feedback and Self-Assessment SCRIPT".to_owned()),
+        title: Some(title),
         basic_chart: Some(BasicChartSpec {
             chart_type: BasicChartType::Column,
             legend_position: BasicChartLegendPosition::RightLegend,
