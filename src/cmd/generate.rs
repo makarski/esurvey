@@ -2,10 +2,13 @@ use std::default::Default;
 use std::env::args;
 use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
+use std::str::FromStr;
 
 use crate::appsscript;
 use appsscript::template::Template;
 use appsscript::ProjectsClient;
+
+use crate::config::{AssessmentKind, ResponseKind};
 
 #[derive(Default, Debug)]
 struct Flags {
@@ -38,15 +41,18 @@ impl Generator {
             &flags.assessment_kind, &flags.first_name, &flags.last_name, &flags.occasion
         );
 
+        // todo: incorporate or rething text based questions
+        let graded_questions = self.read_config(&flags.assessment_kind, &flags.template_file)?;
+
         let code_template = Template::new(
-            flags.assessment_kind,
+            flags.assessment_kind.as_ref(),
             flags.first_name,
             flags.last_name,
             flags.occasion,
             flags.drive_dir_id,
             flags.description,
-            vec!["question 1".to_owned()],
-            vec!["question text".to_owned()],
+            graded_questions,
+            Vec::new(), // add text-based questions
         );
 
         let projects_client = ProjectsClient::new();
@@ -60,6 +66,20 @@ impl Generator {
         )?;
 
         Ok(())
+    }
+
+    fn read_config(
+        &self,
+        assessment_kind: &str,
+        template_file: &str,
+    ) -> Result<Vec<String>, Box<dyn Error>> {
+        let kind = AssessmentKind::from_str(assessment_kind)?;
+        let kind_question = kind.config(template_file, ResponseKind::Grade)?;
+
+        Ok(kind_question
+            .into_iter()
+            .map(|item| item[1].clone())
+            .collect::<Vec<String>>())
     }
 }
 
