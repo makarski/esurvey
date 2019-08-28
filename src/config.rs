@@ -7,14 +7,8 @@ use std::io::{Error as io_err, ErrorKind as io_err_kind};
 use std::path::Path;
 use std::str::FromStr;
 
-const SELF_ASSESSMENT_STR: &str = "self-assessment";
-const TEAM_FEEDBACK_STR: &str = "team-feedback";
-
 #[derive(PartialEq, Clone)]
-pub enum AssessmentKind {
-    TeamFeedback,
-    SelfAssessment,
-}
+pub struct AssessmentKind(pub String);
 
 impl AssessmentKind {
     pub fn config<P: AsRef<Path>>(
@@ -28,39 +22,21 @@ impl AssessmentKind {
         let mut out: Vec<Vec<String>> = Vec::new();
         for result in rdr.records() {
             let record = result?;
-
             let mut template_cfgs = record.iter().take(2);
 
-            // todo: move validations to a fn
-            let assmt_cfg = template_cfgs.next().and_then(|assmt_kind_str| {
-                let is_matching_kind = match AssessmentKind::from_str(assmt_kind_str) {
-                    Ok(t) => t == *self,
-                    Err(_) => false,
-                };
-
-                if is_matching_kind {
-                    return Some(assmt_kind_str);
+            let valid_resp_kind = template_cfgs.nth(1).and_then(|response_kind_str| {
+                if let Ok(t) = ResponseKind::from_str(response_kind_str) {
+                    if t == resp_kind {
+                        return Some(());
+                    }
                 }
-
                 return None;
             });
 
-            let grade_cfg = template_cfgs.next().and_then(|response_kind_str| {
-                let is_matching_resp_kind = match ResponseKind::from_str(response_kind_str) {
-                    Ok(t) => t == resp_kind,
-                    Err(_) => false,
-                };
-
-                if is_matching_resp_kind {
-                    return Some(response_kind_str);
-                }
-
-                return None;
-            });
-
-            if assmt_cfg.and(grade_cfg).is_none() {
+            if valid_resp_kind.is_none() {
                 continue;
             }
+
             let mut collected: Vec<String> = Vec::with_capacity(2);
             for entry in record.iter().skip(2) {
                 collected.push(entry.to_owned());
@@ -77,27 +53,17 @@ impl FromStr for AssessmentKind {
     type Err = io_err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            TEAM_FEEDBACK_STR => Ok(AssessmentKind::TeamFeedback),
-            SELF_ASSESSMENT_STR => Ok(AssessmentKind::SelfAssessment),
-            _ => Err(io_err::new(
-                io_err_kind::InvalidInput,
-                format!("parse error. unknown assessment kind: {}", s),
-            )),
-        }
+        Ok(AssessmentKind(String::from(s)))
     }
 }
 
 impl Display for AssessmentKind {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            AssessmentKind::SelfAssessment => write!(f, "self-assessment"),
-            AssessmentKind::TeamFeedback => write!(f, "team-feedback"),
-        }
+        write!(f, "{}", self.0)
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum ResponseKind {
     Grade,
     Text,
