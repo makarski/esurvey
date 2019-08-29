@@ -1,6 +1,6 @@
 use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
-use crate::skills::EmployeeSkills;
+use crate::skill2::{CategoryData, Survey};
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
@@ -17,8 +17,8 @@ pub struct SpreadsheetClient<'a> {
 }
 
 pub struct Summary {
-    texts: Vec<(AssessmentKind, EmployeeSkills)>,
-    grades: Vec<(AssessmentKind, EmployeeSkills)>,
+    texts: Vec<(AssessmentKind, Vec<CategoryData>)>,
+    grades2: Vec<(AssessmentKind, Vec<CategoryData>)>,
 }
 
 impl<'a> SpreadsheetClient<'a> {
@@ -35,8 +35,8 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_id: &String,
         config_file: &str,
     ) -> Result<Summary, Box<dyn std_err>> {
-        let mut texts: Vec<(AssessmentKind, EmployeeSkills)> = Vec::with_capacity(2);
-        let mut grades: Vec<(AssessmentKind, EmployeeSkills)> = Vec::new();
+        let mut texts: Vec<(AssessmentKind, Vec<CategoryData>)> = Vec::with_capacity(2);
+        let mut grades2: Vec<(AssessmentKind, Vec<CategoryData>)> = Vec::new();
 
         for sheet in sheet_items.into_iter() {
             println!("> reading data from sheet tab: {}", sheet.properties.title);
@@ -50,20 +50,20 @@ impl<'a> SpreadsheetClient<'a> {
             )?;
 
             for val_range in sheet_vals.value_ranges.into_iter() {
-                let (feedback_kind, graded_skills, statement_feedback) =
-                    self.collect_data(config_file, &sheet_title, val_range)?;
+                let (feedback_kind, graded_data, review_data) =
+                    self.collect_data2(config_file, &sheet_title, val_range)?;
 
                 println!(">>> collecting grades!");
-                grades.push((feedback_kind.clone(), graded_skills));
+                grades2.push((feedback_kind.clone(), graded_data));
 
                 println!(">>> collecting textual feedback!");
-                texts.push((feedback_kind.clone(), statement_feedback));
+                texts.push((feedback_kind.clone(), review_data));
             }
         }
 
         Ok(Summary {
             texts: texts,
-            grades: grades,
+            grades2: grades2,
         })
     }
 
@@ -73,7 +73,7 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_id: &str,
         summary: Summary,
     ) -> Result<(), Box<dyn std_err>> {
-        self.save_grades(range, spreadsheet_id, summary.grades)?;
+        self.save_grades2(range, spreadsheet_id, summary.grades2)?;
         self.save_text(range, spreadsheet_id, summary.texts)?;
         Ok(())
     }
@@ -120,37 +120,30 @@ impl<'a> SpreadsheetClient<'a> {
         sheet_id
     }
 
-    fn collect_data(
+    fn collect_data2(
         &self,
         cfg_filename: &str,
         sheet_title: &str,
         val_range: SpreadsheetValueRange,
-    ) -> Result<(AssessmentKind, EmployeeSkills, EmployeeSkills), Box<dyn std_err>> {
-        println!("scanning spreadsheet range: {}", val_range.range);
-
+    ) -> Result<(AssessmentKind, Vec<CategoryData>, Vec<CategoryData>), Box<dyn std_err>> {
         let feedback_kind = AssessmentKind::from_str(sheet_title)?;
 
-        let mut grade_skills = EmployeeSkills::new(
-            &feedback_kind.config(cfg_filename, ResponseKind::Grade)?,
-            ResponseKind::Grade,
-        )?;
+        let grade_raw_cfg = feedback_kind.config(cfg_filename, ResponseKind::Grade)?;
+        let graded_survey = Survey::new(ResponseKind::Grade, &grade_raw_cfg)?;
+        let graded_data = graded_survey.scan(&val_range.values)?;
 
-        let mut text_skills = EmployeeSkills::new(
-            &feedback_kind.config(cfg_filename, ResponseKind::Text)?,
-            ResponseKind::Text,
-        )?;
+        let review_raw_cfg = feedback_kind.config(cfg_filename, ResponseKind::Text)?;
+        let review_survey = Survey::new(ResponseKind::Text, &review_raw_cfg)?;
+        let review_data = review_survey.scan(&val_range.values)?;
 
-        let offset = grade_skills.scan(2, &val_range.values)?;
-        text_skills.scan(offset + 2, &val_range.values)?;
-
-        Ok((feedback_kind, grade_skills, text_skills))
+        Ok((feedback_kind, graded_data, review_data))
     }
 
-    fn save_grades(
+    fn save_grades2(
         &self,
         range: &str,
         spreadsheet_id: &str,
-        grades: Vec<(AssessmentKind, EmployeeSkills)>,
+        grades: Vec<(AssessmentKind, Vec<CategoryData>)>,
     ) -> Result<(), Box<dyn std_err>> {
         let mut spreadsheet_values = SpreadsheetValueRange {
             range: range.to_owned(),
@@ -166,19 +159,19 @@ impl<'a> SpreadsheetClient<'a> {
             vec![String::from("Feedback Kind / Category")],
         );
 
-        for (index, (feedback_kind, graded_skills)) in grades.into_iter().enumerate() {
-            for question in &graded_skills.skills {
+        for (index, (feedback_kind, by_category)) in grades.into_iter().enumerate() {
+            for category in by_category {
                 if index == 0 {
                     aggregated
                         .entry(header_name.clone())
-                        .and_modify(|e| e.push(question.name.clone()));
+                        .and_modify(|e| e.push(category.category_name.clone()));
                 }
 
                 match feedback_kind {
                     AssessmentKind(ref name) => aggregated
                         .entry(name.clone())
-                        .and_modify(|e| e.push(question.avg().to_string()))
-                        .or_insert(vec![name.clone(), question.avg().to_string()]),
+                        .and_modify(|e| e.push(category.avg().to_string()))
+                        .or_insert(vec![name.clone(), category.avg().to_string()]),
                 };
             }
         }
@@ -212,7 +205,7 @@ impl<'a> SpreadsheetClient<'a> {
         &self,
         range: &str,
         spreadsheet_id: &str,
-        feedbacks: Vec<(AssessmentKind, EmployeeSkills)>,
+        feedbacks: Vec<(AssessmentKind, Vec<CategoryData>)>,
     ) -> Result<(), Box<dyn std_err>> {
         let mut spreadsheet_values = SpreadsheetValueRange {
             range: range.to_owned(),
@@ -225,14 +218,14 @@ impl<'a> SpreadsheetClient<'a> {
 
         aggreated_kinds.push("Skill / Audience".to_owned());
 
-        for (fdb_kind, stmt_feedbacks) in feedbacks {
+        for (fdb_kind, by_category) in feedbacks.into_iter() {
             aggreated_kinds.push(fdb_kind.to_string());
 
-            for stmt_feedback in &stmt_feedbacks.skills {
+            for category in by_category {
                 aggregated
-                    .entry(stmt_feedback.name.to_string())
-                    .and_modify(|e| e.push(stmt_feedback.txt()))
-                    .or_insert(vec![stmt_feedback.name.to_string(), stmt_feedback.txt()]);
+                    .entry(category.category_name.clone())
+                    .and_modify(|e| e.push(category.reviews()))
+                    .or_insert(vec![category.category_name.clone(), category.reviews()]);
             }
         }
 
