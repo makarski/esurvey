@@ -1,6 +1,6 @@
 use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
-use crate::skill2::{CategoryData, Survey};
+use crate::skill2::{CategoryResponse, Survey};
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
@@ -17,8 +17,8 @@ pub struct SpreadsheetClient<'a> {
 }
 
 pub struct Summary {
-    texts: Vec<(AssessmentKind, Vec<CategoryData>)>,
-    grades2: Vec<(AssessmentKind, Vec<CategoryData>)>,
+    texts: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
+    grades2: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
 }
 
 impl<'a> SpreadsheetClient<'a> {
@@ -35,8 +35,8 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_id: &String,
         config_file: &str,
     ) -> Result<Summary, Box<dyn std_err>> {
-        let mut texts: Vec<(AssessmentKind, Vec<CategoryData>)> = Vec::with_capacity(2);
-        let mut grades2: Vec<(AssessmentKind, Vec<CategoryData>)> = Vec::new();
+        let mut texts: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
+        let mut grades2: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
 
         for sheet in sheet_items.into_iter() {
             println!("> reading data from sheet tab: {}", sheet.properties.title);
@@ -53,11 +53,15 @@ impl<'a> SpreadsheetClient<'a> {
                 let (feedback_kind, graded_data, review_data) =
                     self.collect_data2(config_file, &sheet_title, val_range)?;
 
-                println!(">>> collecting grades!");
-                grades2.push((feedback_kind.clone(), graded_data));
+                if graded_data.len() > 0 {
+                    println!(">>> collecting grades!");
+                    grades2.push((feedback_kind.clone(), graded_data));
+                }
 
-                println!(">>> collecting textual feedback!");
-                texts.push((feedback_kind.clone(), review_data));
+                if review_data.len() > 0 {
+                    println!(">>> collecting textual feedback!");
+                    texts.push((feedback_kind.clone(), review_data));
+                }
             }
         }
 
@@ -73,8 +77,12 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_id: &str,
         summary: Summary,
     ) -> Result<(), Box<dyn std_err>> {
-        self.save_grades2(range, spreadsheet_id, summary.grades2)?;
-        self.save_text(range, spreadsheet_id, summary.texts)?;
+        if summary.grades2.len() > 0 {
+            self.save_grades2(range, spreadsheet_id, summary.grades2)?;
+        }
+        if summary.texts.len() > 0 {
+            self.save_text(range, spreadsheet_id, summary.texts)?;
+        }
         Ok(())
     }
 
@@ -125,7 +133,14 @@ impl<'a> SpreadsheetClient<'a> {
         cfg_filename: &str,
         sheet_title: &str,
         val_range: SpreadsheetValueRange,
-    ) -> Result<(AssessmentKind, Vec<CategoryData>, Vec<CategoryData>), Box<dyn std_err>> {
+    ) -> Result<
+        (
+            AssessmentKind,
+            Vec<Box<dyn CategoryResponse>>,
+            Vec<Box<dyn CategoryResponse>>,
+        ),
+        Box<dyn std_err>,
+    > {
         let feedback_kind = AssessmentKind::from_str(sheet_title)?;
 
         let grade_raw_cfg = feedback_kind.config(cfg_filename, ResponseKind::Grade)?;
@@ -143,14 +158,8 @@ impl<'a> SpreadsheetClient<'a> {
         &self,
         range: &str,
         spreadsheet_id: &str,
-        grades: Vec<(AssessmentKind, Vec<CategoryData>)>,
+        grades: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
     ) -> Result<(), Box<dyn std_err>> {
-        let mut spreadsheet_values = SpreadsheetValueRange {
-            range: range.to_owned(),
-            major_dimension: MajorDimension::Rows,
-            values: Vec::with_capacity(3),
-        };
-
         let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
 
         let header_name = String::from("header");
@@ -164,14 +173,14 @@ impl<'a> SpreadsheetClient<'a> {
                 if index == 0 {
                     aggregated
                         .entry(header_name.clone())
-                        .and_modify(|e| e.push(category.category_name.clone()));
+                        .and_modify(|e| e.push(category.name()));
                 }
 
                 match feedback_kind {
                     AssessmentKind(ref name) => aggregated
                         .entry(name.clone())
-                        .and_modify(|e| e.push(category.avg().to_string()))
-                        .or_insert(vec![name.clone(), category.avg().to_string()]),
+                        .and_modify(|e| e.push(category.read().unwrap().to_string()))
+                        .or_insert(vec![name.clone(), category.read().unwrap().to_string()]),
                 };
             }
         }
@@ -181,6 +190,13 @@ impl<'a> SpreadsheetClient<'a> {
             .ok_or("error retrieving the header row")?
             .deref()
             .to_vec();
+
+        let mut spreadsheet_values = SpreadsheetValueRange {
+            range: range.to_owned(),
+            major_dimension: MajorDimension::Rows,
+            values: Vec::with_capacity(3),
+        };
+
         spreadsheet_values.add_value(header_row);
 
         for (key, val) in aggregated.iter() {
@@ -205,14 +221,8 @@ impl<'a> SpreadsheetClient<'a> {
         &self,
         range: &str,
         spreadsheet_id: &str,
-        feedbacks: Vec<(AssessmentKind, Vec<CategoryData>)>,
+        feedbacks: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
     ) -> Result<(), Box<dyn std_err>> {
-        let mut spreadsheet_values = SpreadsheetValueRange {
-            range: range.to_owned(),
-            major_dimension: MajorDimension::Rows,
-            values: Vec::new(),
-        };
-
         let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
         let mut aggreated_kinds: Vec<String> = Vec::with_capacity(feedbacks.len() + 1 as usize);
 
@@ -223,11 +233,17 @@ impl<'a> SpreadsheetClient<'a> {
 
             for category in by_category {
                 aggregated
-                    .entry(category.category_name.clone())
-                    .and_modify(|e| e.push(category.reviews()))
-                    .or_insert(vec![category.category_name.clone(), category.reviews()]);
+                    .entry(category.name())
+                    .and_modify(|e| e.push(category.read().unwrap().to_string()))
+                    .or_insert(vec![category.name(), category.read().unwrap().to_string()]);
             }
         }
+
+        let mut spreadsheet_values = SpreadsheetValueRange {
+            range: range.to_owned(),
+            major_dimension: MajorDimension::Rows,
+            values: Vec::new(),
+        };
 
         spreadsheet_values.add_value(aggreated_kinds);
         for item in aggregated.values() {

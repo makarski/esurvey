@@ -1,61 +1,74 @@
-// use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 
 use crate::config::ResponseKind;
 use crate::question::Question;
 
-pub struct CategoryData {
-    pub category_name: String,
+pub trait CategoryResponse {
+    fn name(&self) -> String;
+    fn write(&mut self, q: &Question, v: &str) -> Result<(), Box<dyn Error>>;
+    fn read(&self) -> Option<String>;
+}
+
+struct GradedCategory {
+    name: String,
     grades: Vec<f32>,
+}
+
+impl CategoryResponse for GradedCategory {
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn write(&mut self, q: &Question, v: &str) -> Result<(), Box<dyn Error>> {
+        let f = v.parse::<f32>()?;
+        self.grades.push(q.score(f));
+        Ok(())
+    }
+
+    fn read(&self) -> Option<String> {
+        let calc = self.grades.iter().sum::<f32>() / self.grades.len() as f32;
+        Some(calc.to_string())
+    }
+}
+
+impl GradedCategory {
+    fn new(name: String) -> Self {
+        GradedCategory {
+            name: name,
+            grades: Vec::new(),
+        }
+    }
+}
+
+struct ReviewCategory {
+    name: String,
     reviews: Vec<String>,
 }
 
-impl CategoryData {
-    pub fn new(name: String) -> Self {
-        CategoryData {
-            category_name: name,
-            grades: Vec::new(),
-            reviews: Vec::new(),
-        }
+impl CategoryResponse for ReviewCategory {
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
-    pub fn write_grade(&mut self, v: f32) {
-        self.grades.push(v)
+    fn write(&mut self, _: &Question, v: &str) -> Result<(), Box<dyn Error>> {
+        self.reviews.push(String::from(v));
+        Ok(())
     }
 
-    pub fn write_review(&mut self, v: &str) {
-        self.reviews.push(String::from(v))
-    }
-
-    pub fn avg(&self) -> f32 {
-        self.grades.iter().sum::<f32>() / self.grades.len() as f32
-    }
-
-    pub fn reviews(&self) -> String {
-        self.reviews.join("\n")
+    fn read(&self) -> Option<String> {
+        Some(self.reviews.join("\n"))
     }
 }
 
-// impl Ord for CategoryData {
-//     fn cmp(&self, other: &CategoryData) -> Ordering {
-//         self.category_name.cmp(&other.category_name)
-//     }
-// }
-
-// impl PartialOrd for CategoryData {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
-
-// impl PartialEq for CategoryData {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.category_name == other.category_name
-//     }
-// }
-
-// impl Eq for CategoryData {}
+impl ReviewCategory {
+    fn new(name: String) -> Self {
+        ReviewCategory {
+            name: name,
+            reviews: Vec::new(),
+        }
+    }
+}
 
 pub struct Survey {
     kind: ResponseKind,
@@ -99,9 +112,12 @@ impl Survey {
         })
     }
 
-    pub fn scan(&self, raw_data: &Vec<Vec<String>>) -> Result<Vec<CategoryData>, Box<dyn Error>> {
+    pub fn scan(
+        &self,
+        raw_data: &Vec<Vec<String>>,
+    ) -> Result<Vec<Box<dyn CategoryResponse>>, Box<dyn Error>> {
         let answers = raw_data.into_iter().skip(2);
-        let mut category_map: HashMap<&str, CategoryData> = HashMap::new();
+        let mut category_map: HashMap<&str, Box<dyn CategoryResponse>> = HashMap::new();
 
         for answer in answers {
             let mut per_category = answer.into_iter();
@@ -115,38 +131,19 @@ impl Survey {
                 None => continue,
             };
 
-            // todo: check for a better loop
             for grade_in in per_category {
-                // todo: remove duplicate code
-                match self.kind {
-                    ResponseKind::Grade => {
-                        let f_grade = grade_in.parse::<f32>()?;
-                        let score = qst.score(f_grade);
-
-                        category_map
-                            .entry(category.name.as_ref())
-                            .and_modify(|ctgr_data| ctgr_data.write_grade(score))
-                            .or_insert_with(|| {
-                                let mut ctgr_data = CategoryData::new(category.name.clone());
-                                ctgr_data.write_grade(score);
-                                ctgr_data
-                            });
-                    }
-                    ResponseKind::Text => {
-                        category_map
-                            .entry(category.name.as_ref())
-                            .and_modify(|ctgr_data| ctgr_data.write_review(grade_in))
-                            .or_insert_with(|| {
-                                let mut ctgr_data = CategoryData::new(category.name.clone());
-                                ctgr_data.write_review(grade_in);
-                                ctgr_data
-                            });
-                    }
-                }
+                category_map
+                    .entry(category.name.as_ref())
+                    .and_modify(|ctgr_data| ctgr_data.write(qst, grade_in).unwrap()) // todo: propogate unwrap
+                    .or_insert_with(|| {
+                        let mut ctgr_data = self.response_by_kind(category.name.clone());
+                        ctgr_data.write(qst, grade_in).unwrap(); // // todo: propogate unwrap
+                        ctgr_data
+                    });
             }
         }
 
-        let mut category_data: Vec<CategoryData> = Vec::new();
+        let mut category_data: Vec<Box<dyn CategoryResponse>> = Vec::new();
         category_map
             .drain()
             .for_each(|(_, v)| category_data.push(v));
@@ -161,6 +158,13 @@ impl Survey {
             }
         }
         None
+    }
+
+    fn response_by_kind(&self, name: String) -> Box<dyn CategoryResponse> {
+        match self.kind {
+            ResponseKind::Grade => Box::new(GradedCategory::new(name)),
+            ResponseKind::Text => Box::new(ReviewCategory::new(name)),
+        }
     }
 }
 
