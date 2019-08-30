@@ -1,5 +1,5 @@
-pub struct Template {
-    assessment_kind: String,
+pub struct Template<'a> {
+    assessment_kind: &'a str,
     first_name: String,
     last_name: String,
     occasion: String,
@@ -9,9 +9,9 @@ pub struct Template {
     text_questions: Vec<String>,
 }
 
-impl Template {
+impl<'a> Template<'a> {
     pub fn new(
-        assessment_kind: String,
+        assessment_kind: &'a str,
         first_name: String,
         last_name: String,
         occasion: String,
@@ -82,16 +82,18 @@ impl Template {
   // section 2 Strenths and Improvements
   var text_qs = ["{concat_text_qs}"];
   
-  form.addPageBreakItem()
-       .setTitle("Strengths and Improvements")
-       .setGoToPage(FormApp.PageNavigationType.CONTINUE)
-       .setHelpText("You have 2 boxes to add a text or list about your Strengths and Improvements. The text in this section will be shared directly.");  
+   if (text_qs.length > 0 && text_qs[0] != "") {{
+        form.addPageBreakItem()
+            .setTitle("Strengths and Improvements")
+            .setGoToPage(FormApp.PageNavigationType.CONTINUE)
+            .setHelpText("You have 2 boxes to add a text or list about your Strengths and Improvements. The text in this section will be shared directly.");  
   
-  text_qs.forEach(function (v, i) {{
-      form.addParagraphTextItem()
-      .setTitle(v)
-      .setRequired(true);
-    }});
+        text_qs.forEach(function (v, i) {{
+            form.addParagraphTextItem()
+            .setTitle(v)
+            .setRequired(true);
+        }});
+   }}
   
    // move to the right folder
    var file = DriveApp.getFileById(form.getId());
