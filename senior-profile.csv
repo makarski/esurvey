@@ -1,20 +1,20 @@
 Assessment Kind,Response Kind,Category,Template,Weight
-Team-Feedback,grade,Communication,"communicates clearly, efficiently and in a structured manner",1
-Team-Feedback,grade,Communication,selects language tailored to the experience of the audience,1
-Team-Feedback,grade,Communication,"listens actively; acknowledges perspectives and ideas of the others",1
-Team-Feedback,grade,Communication,provides timely feedback and openly shares opinion,1
-Team-Feedback,grade,Problem Solving,structures information into manageable chunks and sets reasonable focus areas,1
-Team-Feedback,grade,Problem Solving,solves problems with pragmatic mentality,1
-Team-Feedback,grade,Problem Solving,designs and delivers high-quality and accurate output,1
-Team-Feedback,grade,Problem Solving,considers and understands complex topics and their impact,1
-Team-Feedback,grade,Organization,"deploys his/her time in an efficient, cost conscious manner",1
-Team-Feedback,grade,Organization,is a self-starter and can efficiently work with ambiguous requirements,1
-Team-Feedback,grade,Teamwork,is actively using expertise of other teams within the company.,1
-Team-Feedback,grade,Teamwork,has established productive relationship with the team.,1
-Team-Feedback,grade,Teamwork,sets clear expectations on taken commitments.,1
-Team-Feedback,grade,Teamwork,values time of his/her colleagues and is mindful of interruptions.,1
-Team-Feedback,text,Strengths,"strongest skills and qualities; how do they help them to stand out",1
-Team-Feedback,text,Improvement Opportunities,What skills and qualities would you suggest,1
+Team-Feedback,grade,Communication,"{name} communicates clearly, efficiently and in a structured manner",1
+Team-Feedback,grade,Communication,"{name} selects language tailored to the experience of the audience",1
+Team-Feedback,grade,Communication,"{name} listens actively; acknowledges perspectives and ideas of the others",1
+Team-Feedback,grade,Communication,"{name} provides timely feedback and openly shares opinion",1
+Team-Feedback,grade,Problem Solving,"{name}" structures information into manageable chunks and sets reasonable focus areas",1
+Team-Feedback,grade,Problem Solving,"{name} solves problems with pragmatic mentality",1
+Team-Feedback,grade,Problem Solving,"{name} designs and delivers high-quality and accurate output",1
+Team-Feedback,grade,Problem Solving,"{name} considers and understands complex topics and their impact",1
+Team-Feedback,grade,Organization,"{name} deploys his/her time in an efficient, cost conscious manner",1
+Team-Feedback,grade,Organization,"{name} is a self-starter and can efficiently work with ambiguous requirements",1
+Team-Feedback,grade,Teamwork,"{name} is actively using expertise of other teams within the company",1
+Team-Feedback,grade,Teamwork,"{name} has established productive relationship with the team",1
+Team-Feedback,grade,Teamwork,"{name} sets clear expectations on taken commitments",1
+Team-Feedback,grade,Teamwork,"{name} values time of his/her colleagues and is mindful of interruptions",1
+Team-Feedback,text,Strengths,"Strongest skills and qualities; how do they help {name} to stand out",1
+Team-Feedback,text,Improvement Opportunities,"What skills and qualities would you suggest",1
 Self-Assessment,grade,Communication,"I communicate clearly, efficiently and in a structured manner.",1
 Self-Assessment,grade,Communication,I select language tailored to the experience of the audience.,1
 Self-Assessment,grade,Communication,"I listen actively; acknowledge perspectives and ideas of the others.",1

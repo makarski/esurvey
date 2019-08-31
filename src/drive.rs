@@ -1,3 +1,4 @@
+use crate::config;
 use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
 use crate::skill2::{CategoryResponse, Survey};
@@ -34,40 +35,40 @@ impl<'a> SpreadsheetClient<'a> {
         sheet_items: Vec<Sheet>,
         spreadsheet_id: &String,
         config_file: &str,
+        first_name: &str,
     ) -> Result<Summary, Box<dyn std_err>> {
+        let templates = config::read(config_file, vec![("{name}", first_name)])?;
+
+        let grade_survey = Survey::new(ResponseKind::Grade, &templates)?;
+        let text_survey = Survey::new(ResponseKind::Text, &templates)?;
+
         let mut texts: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
-        let mut grades2: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
+        let mut grades: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
 
         for sheet in sheet_items.into_iter() {
             println!("> reading data from sheet tab: {}", sheet.properties.title);
 
             let sheet_title = sheet.properties.title;
+            let feedback_kind = AssessmentKind::from_str(sheet_title.as_ref())?;
 
             let sheet_vals = self.sheets_client.get_batch_values(
                 &self.access_token,
                 spreadsheet_id,
-                vec![sheet_title.clone()],
+                vec![sheet_title],
             )?;
 
             for val_range in sheet_vals.value_ranges.into_iter() {
-                let (feedback_kind, graded_data, review_data) =
-                    self.collect_data2(config_file, &sheet_title, val_range)?;
+                println!(">>> collecting grades!");
+                grades.push((feedback_kind.clone(), grade_survey.scan(&val_range.values)?));
 
-                if graded_data.len() > 0 {
-                    println!(">>> collecting grades!");
-                    grades2.push((feedback_kind.clone(), graded_data));
-                }
-
-                if review_data.len() > 0 {
-                    println!(">>> collecting textual feedback!");
-                    texts.push((feedback_kind.clone(), review_data));
-                }
+                println!(">>> collecting textual feedback!");
+                texts.push((feedback_kind.clone(), text_survey.scan(&val_range.values)?));
             }
         }
 
         Ok(Summary {
             texts: texts,
-            grades2: grades2,
+            grades2: grades,
         })
     }
 
@@ -126,32 +127,6 @@ impl<'a> SpreadsheetClient<'a> {
             })?;
 
         sheet_id
-    }
-
-    fn collect_data2(
-        &self,
-        cfg_filename: &str,
-        sheet_title: &str,
-        val_range: SpreadsheetValueRange,
-    ) -> Result<
-        (
-            AssessmentKind,
-            Vec<Box<dyn CategoryResponse>>,
-            Vec<Box<dyn CategoryResponse>>,
-        ),
-        Box<dyn std_err>,
-    > {
-        let feedback_kind = AssessmentKind::from_str(sheet_title)?;
-
-        let grade_raw_cfg = feedback_kind.config(cfg_filename, ResponseKind::Grade)?;
-        let graded_survey = Survey::new(ResponseKind::Grade, &grade_raw_cfg)?;
-        let graded_data = graded_survey.scan(&val_range.values)?;
-
-        let review_raw_cfg = feedback_kind.config(cfg_filename, ResponseKind::Text)?;
-        let review_survey = Survey::new(ResponseKind::Text, &review_raw_cfg)?;
-        let review_data = review_survey.scan(&val_range.values)?;
-
-        Ok((feedback_kind, graded_data, review_data))
     }
 
     fn save_grades2(
