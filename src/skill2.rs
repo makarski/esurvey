@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use crate::config::ResponseKind;
-use crate::question::Question;
+use crate::config::{QuestionConfig, ResponseKind};
 
 pub trait CategoryResponse {
     fn name(&self) -> String;
-    fn write(&mut self, q: &Question, v: &str) -> Result<(), Box<dyn Error>>;
+    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>>;
     fn read(&self) -> Option<String>;
 }
 
 struct GradedCategory {
     name: String,
-    grades: Vec<f32>,
+    vals: Vec<String>,
 }
 
 impl CategoryResponse for GradedCategory {
@@ -20,14 +19,22 @@ impl CategoryResponse for GradedCategory {
         self.name.clone()
     }
 
-    fn write(&mut self, q: &Question, v: &str) -> Result<(), Box<dyn Error>> {
-        let f = v.parse::<f32>()?;
-        self.grades.push(q.score(f));
+    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>> {
+        self.vals.push(String::from(v));
         Ok(())
     }
 
     fn read(&self) -> Option<String> {
-        let calc = self.grades.iter().sum::<f32>() / self.grades.len() as f32;
+        let calc = self
+            .vals
+            .iter()
+            .map(|item| {
+                item.parse::<f32>()
+                    .expect(format!("failed to parse: {}", item).as_ref())
+            })
+            .sum::<f32>()
+            / self.vals.len() as f32;
+
         Some(calc.to_string())
     }
 }
@@ -36,28 +43,28 @@ impl GradedCategory {
     fn new(name: String) -> Self {
         GradedCategory {
             name: name,
-            grades: Vec::new(),
+            vals: Vec::new(),
         }
     }
 }
 
 struct ReviewCategory {
     name: String,
-    reviews: Vec<String>,
+    vals: Vec<String>,
 }
 
-impl CategoryResponse for ReviewCategory {
+impl<'a> CategoryResponse for ReviewCategory {
     fn name(&self) -> String {
         self.name.clone()
     }
 
-    fn write(&mut self, _: &Question, v: &str) -> Result<(), Box<dyn Error>> {
-        self.reviews.push(String::from(v));
+    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>> {
+        self.vals.push(String::from(v));
         Ok(())
     }
 
     fn read(&self) -> Option<String> {
-        Some(self.reviews.join("\n"))
+        Some(self.vals.join("\n"))
     }
 }
 
@@ -65,50 +72,24 @@ impl ReviewCategory {
     fn new(name: String) -> Self {
         ReviewCategory {
             name: name,
-            reviews: Vec::new(),
+            vals: Vec::new(),
         }
     }
 }
 
-pub struct Survey {
+pub struct Survey<'a> {
     kind: ResponseKind,
-    categories: Vec<Category>,
+    templates: &'a Vec<QuestionConfig>,
 }
 
-impl Survey {
-    pub fn new(kind: ResponseKind, raw_cfg: &Vec<Vec<String>>) -> Result<Self, Box<dyn Error>> {
-        let mut category_map: HashMap<&str, Category> = HashMap::new();
-
-        for row in raw_cfg.into_iter() {
-            let (category_in, template, weight_in) = (
-                row.get(0)
-                    .ok_or(format!("failed config category: {:?}", row))?,
-                row.get(1).ok_or(
-                    format!("failed to retrieve config template from: {:?}", row).as_str(),
-                )?,
-                row.get(2)
-                    .ok_or(format!("failed to retrieve config weight: {:?}", row))?,
-            );
-
-            let weight = weight_in.parse::<f32>()?;
-            let category_ref: &str = category_in.as_ref();
-
-            category_map
-                .entry(category_ref)
-                .and_modify(|category| category.add_question(template.to_string(), weight))
-                .or_insert_with(|| -> Category {
-                    let mut category = Category::new(category_in.to_string());
-                    category.add_question(template.to_string(), weight);
-                    category
-                });
-        }
-
-        let mut categories: Vec<Category> = Vec::new();
-        category_map.drain().for_each(|(_, c)| categories.push(c));
-
+impl<'a> Survey<'a> {
+    pub fn new(
+        kind: ResponseKind,
+        templates: &'a Vec<QuestionConfig>,
+    ) -> Result<Self, Box<dyn Error>> {
         Ok(Survey {
             kind: kind,
-            categories: categories,
+            templates: templates,
         })
     }
 
@@ -126,18 +107,34 @@ impl Survey {
                 per_category
             ))?;
 
-            let (category, qst) = match self.find_category(qst_stmt) {
+            let template = match self.find_config_template(qst_stmt) {
                 Some(t) => t,
                 None => continue,
             };
 
             for grade_in in per_category {
+                let processed_answer = template
+                    .eval_answer(grade_in.as_ref())
+                    .expect(format!("failed evalling: {}, {}", grade_in, self.kind).as_ref());
+
                 category_map
-                    .entry(category.name.as_ref())
-                    .and_modify(|ctgr_data| ctgr_data.write(qst, grade_in).unwrap()) // todo: propogate unwrap
+                    .entry(template.category.as_ref())
+                    .and_modify(|ctgr_data| {
+                        ctgr_data
+                            .write(&processed_answer)
+                            .expect(format!("failed response write: {}", grade_in).as_ref())
+                    }) // todo: propogate unwrap
                     .or_insert_with(|| {
-                        let mut ctgr_data = self.response_by_kind(category.name.clone());
-                        ctgr_data.write(qst, grade_in).unwrap(); // // todo: propogate unwrap
+                        let mut ctgr_data = self.response_by_kind(template.category.clone());
+                        ctgr_data.write(&processed_answer).expect(
+                            format!(
+                                "failed response write: {}, {}, {}",
+                                grade_in,
+                                ctgr_data.name(),
+                                self.kind
+                            )
+                            .as_ref(),
+                        ); // // todo: propogate unwrap
                         ctgr_data
                     });
             }
@@ -151,13 +148,11 @@ impl Survey {
         Ok(category_data)
     }
 
-    fn find_category(&self, input_question: &String) -> Option<(&Category, &Question)> {
-        for category in &self.categories {
-            if let Some(qst) = category.find_question(input_question) {
-                return Some((&category, qst));
-            }
-        }
-        None
+    fn find_config_template(&self, input_question: &String) -> Option<&QuestionConfig> {
+        self.templates
+            .into_iter()
+            .filter(|tmplt| tmplt.response_kind == self.kind)
+            .find(|tmplt| tmplt.match_template(input_question))
     }
 
     fn response_by_kind(&self, name: String) -> Box<dyn CategoryResponse> {
@@ -165,33 +160,5 @@ impl Survey {
             ResponseKind::Grade => Box::new(GradedCategory::new(name)),
             ResponseKind::Text => Box::new(ReviewCategory::new(name)),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct Category {
-    name: String,
-    questions: Vec<Question>,
-}
-
-impl Category {
-    pub fn new(name: String) -> Self {
-        Category {
-            name: name,
-            questions: Vec::new(),
-        }
-    }
-
-    pub fn find_question(&self, input_question: &String) -> Option<&Question> {
-        for qst in &self.questions {
-            if qst.match_template(input_question) {
-                return Some(&qst);
-            }
-        }
-        None
-    }
-
-    pub fn add_question(&mut self, template: String, weight: f32) {
-        self.questions.push(Question::new(template, weight))
     }
 }

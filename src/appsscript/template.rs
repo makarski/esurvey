@@ -67,15 +67,15 @@ impl<'a> Template<'a> {
    var pageTwo = form.addPageBreakItem()
        .setTitle("Agree or Disagree")
        .setGoToPage(FormApp.PageNavigationType.CONTINUE)
-       .setHelpText("Agree or disagree with the provided statements. The scale should be interpreted as follows: 1 - strongly disagree, 5 - neutral, 10 - strongly agree.");
+       .setHelpText("Agree or disagree with the provided statements. The scale should be interpreted as follows: 1 - strongly disagree, 3 - neutral, 5 - strongly agree.");
 
   var qs = ["{concat_graded_qs}"];
       
    qs.forEach(function (v, i) {{
      form.addScaleItem()
        .setTitle(v)  
-       .setBounds(1, 10)
-       .setLabels("strongly disagree","strongly agree")
+       .setBounds(1, 5)
+       .setLabels("disagree","agree")
        .setRequired(true);
    }});
                 

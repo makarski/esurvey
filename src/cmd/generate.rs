@@ -2,13 +2,13 @@ use std::default::Default;
 use std::env::args;
 use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
-use std::str::FromStr;
 
 use crate::appsscript;
 use appsscript::template::Template;
 use appsscript::ProjectsClient;
 
-use crate::config::{AssessmentKind, ResponseKind};
+use crate::config;
+use crate::config::{QuestionConfig, ResponseKind};
 
 #[derive(Default, Debug)]
 struct Flags {
@@ -41,8 +41,15 @@ impl Generator {
             &flags.assessment_kind, &flags.first_name, &flags.last_name, &flags.occasion
         );
 
-        // todo: incorporate or rething text based questions
-        let graded_questions = self.read_config(&flags.assessment_kind, &flags.template_file)?;
+        let templates = config::read(&flags.template_file, vec![("{name}", &flags.first_name)])?;
+
+        let graded_questions =
+            self.config_questions(&templates, ResponseKind::Grade, &flags.assessment_kind)?;
+        let text_questions =
+            self.config_questions(&templates, ResponseKind::Text, &flags.assessment_kind)?;
+
+        // println!("{:#?}", graded_questions);
+        // println!("{:#?}", text_questions);
 
         let code_template = Template::new(
             flags.assessment_kind.as_ref(),
@@ -52,7 +59,7 @@ impl Generator {
             flags.drive_dir_id,
             flags.description,
             graded_questions,
-            Vec::new(), // add text-based questions
+            text_questions,
         );
 
         let projects_client = ProjectsClient::new();
@@ -68,17 +75,19 @@ impl Generator {
         Ok(())
     }
 
-    fn read_config(
+    fn config_questions(
         &self,
+        templates: &Vec<QuestionConfig>,
+        response_kind: ResponseKind,
         assessment_kind: &str,
-        template_file: &str,
     ) -> Result<Vec<String>, Box<dyn Error>> {
-        let kind = AssessmentKind::from_str(assessment_kind)?;
-        let kind_question = kind.config(template_file, ResponseKind::Grade)?;
-
-        Ok(kind_question
+        Ok(templates
             .into_iter()
-            .map(|item| item[1].clone())
+            .filter(|question| {
+                (question.response_kind == response_kind)
+                    && (question.assessment_kind.to_lowercase() == *assessment_kind.to_lowercase())
+            })
+            .map(|question| question.template_final.to_string())
             .collect::<Vec<String>>())
     }
 }
@@ -101,7 +110,7 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
             "-last-name" => flags.last_name = v,
             "-occasion" => flags.occasion = v,
             "-dir-id" => flags.drive_dir_id = v,
-            "-template" => flags.template_file = v,
+            "-templates" => flags.template_file = v,
             "-description" => flags.description = v,
             _ => {}
         };
@@ -115,7 +124,7 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
         ("-last-name", &flags.last_name),
         ("-occasion", &flags.occasion),
         ("-dir-id", &flags.drive_dir_id),
-        ("-template", &flags.template_file),
+        ("-templates", &flags.template_file),
         ("-description", &flags.description),
     ]
     .iter()
@@ -131,6 +140,6 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
 
     return Err(Box::new(io_err::new(
         io_err_kind::InvalidInput,
-        format!("missing flag args: {:?}", empty_fields.join(", ")),
+        format!("missing flag args: {:#?}", empty_fields.join(", ")),
     )));
 }

@@ -13,7 +13,6 @@ mod chart;
 mod cmd;
 mod config;
 mod drive;
-mod question;
 mod sheets;
 mod skill2;
 

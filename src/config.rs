@@ -3,51 +3,12 @@ use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::io::{Error as io_err, ErrorKind as io_err_kind};
+use std::io::Error as io_err;
 use std::path::Path;
 use std::str::FromStr;
 
 #[derive(PartialEq, Clone)]
 pub struct AssessmentKind(pub String);
-
-impl AssessmentKind {
-    pub fn config<P: AsRef<Path>>(
-        &self,
-        filename: P,
-        resp_kind: ResponseKind,
-    ) -> Result<Vec<Vec<String>>, Box<dyn std_err>> {
-        let file = File::open(filename)?;
-
-        let mut rdr = csv::Reader::from_reader(file);
-        let mut out: Vec<Vec<String>> = Vec::new();
-        for result in rdr.records() {
-            let record = result?;
-            let mut template_cfgs = record.iter().take(2);
-
-            let valid_resp_kind = template_cfgs.nth(1).and_then(|response_kind_str| {
-                if let Ok(t) = ResponseKind::from_str(response_kind_str) {
-                    if t == resp_kind {
-                        return Some(());
-                    }
-                }
-                return None;
-            });
-
-            if valid_resp_kind.is_none() {
-                continue;
-            }
-
-            let mut collected: Vec<String> = Vec::with_capacity(2);
-            for entry in record.iter().skip(2) {
-                collected.push(entry.to_owned());
-            }
-
-            out.push(collected);
-        }
-
-        Ok(out)
-    }
-}
 
 impl FromStr for AssessmentKind {
     type Err = io_err;
@@ -63,23 +24,72 @@ impl Display for AssessmentKind {
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ResponseKind {
     Grade,
     Text,
 }
 
-impl FromStr for ResponseKind {
-    type Err = io_err;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "grade" => Ok(ResponseKind::Grade),
-            "text" => Ok(ResponseKind::Text),
-            _ => Err(io_err::new(
-                io_err_kind::InvalidInput,
-                format!("parse error. unknown response kind: {}", s),
-            )),
+impl Display for ResponseKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ResponseKind::Grade => write!(f, "grade"),
+            ResponseKind::Text => write!(f, "text"),
         }
+    }
+}
+
+pub fn read<P: AsRef<Path>>(
+    filename: P,
+    replace_with: Vec<(&str, &str)>,
+) -> Result<Vec<QuestionConfig>, Box<dyn std_err>> {
+    let file = File::open(filename)?;
+    let mut rdr = csv::Reader::from_reader(file);
+    let mut out: Vec<QuestionConfig> = Vec::new();
+
+    for result in rdr.records() {
+        let record = result?;
+        let mut question_config = record.deserialize::<QuestionConfig>(None)?;
+
+        question_config.fill_template(&replace_with);
+        out.push(question_config);
+    }
+
+    Ok(out)
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct QuestionConfig {
+    pub assessment_kind: String,
+    pub response_kind: ResponseKind,
+    pub category: String,
+
+    #[serde(rename = "template")]
+    pub template_raw: String,
+
+    #[serde(skip_deserializing)]
+    pub template_final: String,
+    pub weight: f32,
+}
+
+impl QuestionConfig {
+    fn fill_template(&mut self, replacers: &Vec<(&str, &str)>) {
+        self.template_final = self.template_raw.clone();
+        for (from, to) in replacers {
+            self.template_final = self.template_final.replace(from, to);
+        }
+    }
+
+    pub fn eval_answer(&self, input: &str) -> Result<String, Box<dyn std_err>> {
+        match self.response_kind {
+            ResponseKind::Grade => Ok((input.parse::<f32>()? * self.weight).to_string()),
+            ResponseKind::Text => Ok(input.to_string()),
+        }
+    }
+
+    pub fn match_template(&self, input: &String) -> bool {
+        input.contains(&self.template_final) || input.contains(&self.template_raw)
     }
 }

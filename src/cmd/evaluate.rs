@@ -35,6 +35,7 @@ impl Evaluator {
             spreadsheet.sheets,
             &flags.spreadsheet_id,
             &flags.config_file,
+            &flags.first_name,
         )?;
 
         let summary_sheet_id =
@@ -57,12 +58,14 @@ impl Evaluator {
 struct Flags {
     spreadsheet_id: String,
     config_file: String,
+    first_name: String,
 }
 
 fn parse_flags() -> Result<Flags, Box<dyn Error>> {
     let mut flags = Flags {
         spreadsheet_id: String::new(),
         config_file: String::new(),
+        first_name: String::new(),
     };
 
     for arg in args().collect::<Vec<String>>() {
@@ -73,11 +76,16 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
         if arg.contains("-templates=") {
             flags.config_file = arg.trim_start_matches("-templates=").parse()?;
         }
+
+        if arg.contains("-first-name=") {
+            flags.first_name = arg.trim_start_matches("-first-name=").parse()?;
+        }
     }
 
     for (flag_name, cfg_entry) in [
         ("-spreadsheet_id", &flags.spreadsheet_id),
         ("-templates", &flags.config_file),
+        ("-first-name", &flags.first_name),
     ]
     .iter()
     {
