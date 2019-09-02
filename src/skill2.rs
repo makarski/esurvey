@@ -3,77 +3,25 @@ use std::error::Error;
 
 use crate::config::{QuestionConfig, ResponseKind};
 
-pub trait CategoryResponse {
-    fn name(&self) -> String;
-    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>>;
-    fn read(&self) -> Option<String>;
-}
-
-struct GradedCategory {
-    name: String,
+pub struct Responses {
+    pub category_name: String,
     vals: Vec<String>,
 }
 
-impl CategoryResponse for GradedCategory {
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>> {
-        self.vals.push(String::from(v));
-        Ok(())
-    }
-
-    fn read(&self) -> Option<String> {
-        let calc = self
-            .vals
-            .iter()
-            .map(|item| {
-                item.parse::<f32>()
-                    .expect(format!("failed to parse: {}", item).as_ref())
-            })
-            .sum::<f32>()
-            / self.vals.len() as f32;
-
-        Some(calc.to_string())
-    }
-}
-
-impl GradedCategory {
-    fn new(name: String) -> Self {
-        GradedCategory {
-            name: name,
+impl Responses {
+    fn new(category_name: String) -> Self {
+        Responses {
+            category_name: category_name,
             vals: Vec::new(),
         }
     }
-}
 
-struct ReviewCategory {
-    name: String,
-    vals: Vec<String>,
-}
-
-impl<'a> CategoryResponse for ReviewCategory {
-    fn name(&self) -> String {
-        self.name.clone()
+    fn write(&mut self, response: &str) {
+        self.vals.push(String::from(response))
     }
 
-    fn write(&mut self, v: &str) -> Result<(), Box<dyn Error>> {
-        self.vals.push(String::from(v));
-        Ok(())
-    }
-
-    fn read(&self) -> Option<String> {
-        Some(self.vals.join("\n"))
-    }
-}
-
-impl ReviewCategory {
-    fn new(name: String) -> Self {
-        ReviewCategory {
-            name: name,
-            vals: Vec::new(),
-        }
+    pub fn read(&self) -> &Vec<String> {
+        &self.vals
     }
 }
 
@@ -93,17 +41,15 @@ impl<'a> Survey<'a> {
         })
     }
 
-    pub fn scan(
-        &self,
-        raw_data: &Vec<Vec<String>>,
-    ) -> Result<Vec<Box<dyn CategoryResponse>>, Box<dyn Error>> {
+    pub fn scan(&self, raw_data: &Vec<Vec<String>>) -> Result<Vec<Responses>, Box<dyn Error>> {
         let answers = raw_data.into_iter().skip(2);
-        let mut category_map: HashMap<&str, Box<dyn CategoryResponse>> = HashMap::new();
+        let mut category_map: HashMap<&str, Responses> = HashMap::new();
+        let mut ord_categories: Vec<&str> = Vec::new();
 
         for answer in answers {
             let mut per_category = answer.into_iter();
             let qst_stmt = per_category.next().ok_or(format!(
-                "error scanning category question in: {:?}",
+                "error scanning category question in: {:#?}",
                 per_category
             ))?;
 
@@ -120,30 +66,23 @@ impl<'a> Survey<'a> {
                 category_map
                     .entry(template.category.as_ref())
                     .and_modify(|ctgr_data| {
-                        ctgr_data
-                            .write(&processed_answer)
-                            .expect(format!("failed response write: {}", grade_in).as_ref())
-                    }) // todo: propogate unwrap
+                        ctgr_data.write(&processed_answer);
+                    })
                     .or_insert_with(|| {
-                        let mut ctgr_data = self.response_by_kind(template.category.clone());
-                        ctgr_data.write(&processed_answer).expect(
-                            format!(
-                                "failed response write: {}, {}, {}",
-                                grade_in,
-                                ctgr_data.name(),
-                                self.kind
-                            )
-                            .as_ref(),
-                        ); // // todo: propogate unwrap
+                        let mut ctgr_data = Responses::new(template.category.clone());
+                        ctgr_data.write(&processed_answer);
+                        ord_categories.push(template.category.as_ref());
                         ctgr_data
                     });
             }
         }
 
-        let mut category_data: Vec<Box<dyn CategoryResponse>> = Vec::new();
-        category_map
-            .drain()
-            .for_each(|(_, v)| category_data.push(v));
+        let mut category_data: Vec<Responses> = Vec::new();
+        for category_name in ord_categories {
+            if let Some(scanned) = category_map.remove(category_name) {
+                category_data.push(scanned);
+            }
+        }
 
         Ok(category_data)
     }
@@ -153,12 +92,5 @@ impl<'a> Survey<'a> {
             .into_iter()
             .filter(|tmplt| tmplt.response_kind == self.kind)
             .find(|tmplt| tmplt.match_template(input_question))
-    }
-
-    fn response_by_kind(&self, name: String) -> Box<dyn CategoryResponse> {
-        match self.kind {
-            ResponseKind::Grade => Box::new(GradedCategory::new(name)),
-            ResponseKind::Text => Box::new(ReviewCategory::new(name)),
-        }
     }
 }

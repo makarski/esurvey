@@ -1,7 +1,7 @@
 use crate::config;
 use crate::config::{AssessmentKind, ResponseKind};
 use crate::sheets;
-use crate::skill2::{CategoryResponse, Survey};
+use crate::skill2::{Responses, Survey};
 
 use std::collections::HashMap;
 use std::error::Error as std_err;
@@ -18,8 +18,8 @@ pub struct SpreadsheetClient<'a> {
 }
 
 pub struct Summary {
-    texts: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
-    grades2: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
+    texts: Vec<(AssessmentKind, Vec<Responses>)>,
+    grades2: Vec<(AssessmentKind, Vec<Responses>)>,
 }
 
 impl<'a> SpreadsheetClient<'a> {
@@ -42,8 +42,8 @@ impl<'a> SpreadsheetClient<'a> {
         let grade_survey = Survey::new(ResponseKind::Grade, &templates)?;
         let text_survey = Survey::new(ResponseKind::Text, &templates)?;
 
-        let mut texts: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
-        let mut grades: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)> = Vec::new();
+        let mut texts: Vec<(AssessmentKind, Vec<Responses>)> = Vec::new();
+        let mut grades: Vec<(AssessmentKind, Vec<Responses>)> = Vec::new();
 
         for sheet in sheet_items.into_iter() {
             println!("> reading data from sheet tab: {}", sheet.properties.title);
@@ -78,11 +78,29 @@ impl<'a> SpreadsheetClient<'a> {
         spreadsheet_id: &str,
         summary: Summary,
     ) -> Result<(), Box<dyn std_err>> {
-        if summary.grades2.len() > 0 {
-            self.save_grades2(range, spreadsheet_id, summary.grades2)?;
-        }
-        if summary.texts.len() > 0 {
-            self.save_text(range, spreadsheet_id, summary.texts)?;
+        for (response_data, response_kind) in [
+            (summary.grades2, ResponseKind::Grade),
+            (summary.texts, ResponseKind::Text),
+        ]
+        .into_iter()
+        {
+            if response_data.len() == 0 {
+                continue;
+            }
+
+            let rows: SummaryRows = process_grades_reviews(response_kind, response_data);
+            let spreadsheet_values = SpreadsheetValueRange {
+                range: range.to_owned(),
+                major_dimension: MajorDimension::Rows,
+                values: rows.rows(),
+            };
+
+            self.sheets_client.append_values(
+                &self.access_token,
+                spreadsheet_id.to_owned(),
+                range.to_owned(),
+                &spreadsheet_values,
+            )?;
         }
         Ok(())
     }
@@ -128,110 +146,105 @@ impl<'a> SpreadsheetClient<'a> {
 
         sheet_id
     }
+}
 
-    fn save_grades2(
-        &self,
-        range: &str,
-        spreadsheet_id: &str,
-        grades: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
-    ) -> Result<(), Box<dyn std_err>> {
-        let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
+struct SummaryRows {
+    base: HashMap<String, Vec<String>>,
+    ordered_keys: Vec<String>,
+}
 
-        let header_name = String::from("header");
-        aggregated.insert(
-            header_name.clone(),
-            vec![String::from("Feedback Kind / Category")],
-        );
-
-        for (index, (feedback_kind, by_category)) in grades.into_iter().enumerate() {
-            for category in by_category {
-                if index == 0 {
-                    aggregated
-                        .entry(header_name.clone())
-                        .and_modify(|e| e.push(category.name()));
-                }
-
-                match feedback_kind {
-                    AssessmentKind(ref name) => aggregated
-                        .entry(name.clone())
-                        .and_modify(|e| e.push(category.read().unwrap().to_string()))
-                        .or_insert(vec![name.clone(), category.read().unwrap().to_string()]),
-                };
-            }
+impl SummaryRows {
+    fn new() -> Self {
+        SummaryRows {
+            base: HashMap::new(),
+            ordered_keys: Vec::new(),
         }
-
-        let header_row = aggregated
-            .get(&header_name)
-            .ok_or("error retrieving the header row")?
-            .deref()
-            .to_vec();
-
-        let mut spreadsheet_values = SpreadsheetValueRange {
-            range: range.to_owned(),
-            major_dimension: MajorDimension::Rows,
-            values: Vec::with_capacity(3),
-        };
-
-        spreadsheet_values.add_value(header_row);
-
-        for (key, val) in aggregated.iter() {
-            if *key == header_name {
-                continue;
-            }
-
-            spreadsheet_values.add_value(val.deref().to_vec());
-        }
-
-        self.sheets_client.append_values(
-            &self.access_token,
-            spreadsheet_id.to_owned(),
-            range.to_owned(),
-            &spreadsheet_values,
-        )?;
-
-        Ok(())
     }
 
-    fn save_text(
-        &self,
-        range: &str,
-        spreadsheet_id: &str,
-        feedbacks: Vec<(AssessmentKind, Vec<Box<dyn CategoryResponse>>)>,
-    ) -> Result<(), Box<dyn std_err>> {
-        let mut aggregated: HashMap<String, Vec<String>> = HashMap::new();
-        let mut aggreated_kinds: Vec<String> = Vec::with_capacity(feedbacks.len() + 1 as usize);
+    fn add_cell(&mut self, group_key: &str, v: &str) {
+        let exists = self.base.get(group_key);
 
-        aggreated_kinds.push("Skill / Audience".to_owned());
+        // pattern matching is used as a workaround for borrow checker
+        // since we need to append to ordered_keys that needs mutable access to self
+        // that results in 2 mut borrows for inserting into map and a vector
+        match exists {
+            Some(_) => {
+                self.base
+                    .entry(String::from(group_key))
+                    .and_modify(|e| e.push(String::from(v)));
+            }
+            None => {
+                self.base.insert(
+                    String::from(group_key),
+                    vec![String::from(group_key), String::from(v)],
+                );
 
-        for (fdb_kind, by_category) in feedbacks.into_iter() {
-            aggreated_kinds.push(fdb_kind.to_string());
+                self.ordered_keys.push(String::from(group_key));
+            }
+        };
+    }
 
-            for category in by_category {
-                aggregated
-                    .entry(category.name())
-                    .and_modify(|e| e.push(category.read().unwrap().to_string()))
-                    .or_insert(vec![category.name(), category.read().unwrap().to_string()]);
+    fn rows(&self) -> Vec<Vec<String>> {
+        let mut out: Vec<Vec<String>> = Vec::new();
+        for key in &self.ordered_keys {
+            let key_str: &str = key.as_ref();
+            if let Some(v) = self.base.get(key_str) {
+                out.push(v.deref().to_vec());
             }
         }
 
-        let mut spreadsheet_values = SpreadsheetValueRange {
-            range: range.to_owned(),
-            major_dimension: MajorDimension::Rows,
-            values: Vec::new(),
-        };
-
-        spreadsheet_values.add_value(aggreated_kinds);
-        for item in aggregated.values() {
-            spreadsheet_values.add_value(item.deref().to_vec());
-        }
-
-        self.sheets_client.append_values(
-            &self.access_token,
-            spreadsheet_id.to_owned(),
-            range.to_owned(),
-            &spreadsheet_values,
-        )?;
-
-        Ok(())
+        out
     }
+}
+
+fn process_grades_reviews(
+    response_kind: &ResponseKind,
+    data: &Vec<(AssessmentKind, Vec<Responses>)>,
+) -> SummaryRows {
+    match response_kind {
+        ResponseKind::Grade => process_grades(data),
+        ResponseKind::Text => process_reviews(data),
+    }
+}
+
+fn process_grades(grades: &Vec<(AssessmentKind, Vec<Responses>)>) -> SummaryRows {
+    let mut rows = SummaryRows::new();
+
+    for (index, (assessment_kind, by_category)) in grades.into_iter().enumerate() {
+        for category in by_category {
+            if index == 0 {
+                rows.add_cell("Feedback Kind / Category", category.category_name.as_ref());
+            }
+
+            rows.add_cell(
+                assessment_kind.to_string().as_ref(),
+                ResponseKind::Grade
+                    .process_data(category.read())
+                    .unwrap()
+                    .as_ref(),
+            );
+        }
+    }
+
+    rows
+}
+
+fn process_reviews(reviews: &Vec<(AssessmentKind, Vec<Responses>)>) -> SummaryRows {
+    let mut rows = SummaryRows::new();
+
+    for (assessment_kind, by_category) in reviews.into_iter() {
+        rows.add_cell("Skill / Audience", assessment_kind.to_string().as_ref());
+
+        for category in by_category {
+            rows.add_cell(
+                category.category_name.as_ref(),
+                ResponseKind::Text
+                    .process_data(category.read())
+                    .unwrap()
+                    .as_ref(),
+            );
+        }
+    }
+
+    rows
 }

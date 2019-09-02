@@ -13,16 +13,6 @@ pub struct SpreadsheetValueRange {
     pub values: Vec<Vec<String>>,
 }
 
-impl SpreadsheetValueRange {
-    pub fn set_values(&mut self, v: Vec<Vec<String>>) {
-        self.values = v;
-    }
-
-    pub fn add_value(&mut self, v: Vec<String>) {
-        self.values.push(v)
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MajorDimension {
