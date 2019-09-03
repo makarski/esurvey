@@ -125,26 +125,23 @@ impl<'a> SpreadsheetClient<'a> {
             response_include_grid_data: false,
         };
 
-        let sheet_id = self
+        let response_body = self
             .sheets_client
             .batch_update_spreadsheet(self.access_token.as_str(), spreadsheet_id, &batch_update)
-            .map(|response_body| {
-                // todo: find a better way to deal with the borrow checker
-                for reply in response_body.replies.into_iter().take(1) {
-                    if let Some(sheet) = reply.add_sheet {
-                        if let Some(sheet_id) = sheet.properties.sheet_id {
-                            return Ok(sheet_id);
-                        }
-                    }
+            .map_err(|err| format!("add_summary_sheet: {}", err))?;
+
+        if let Some(reply) = response_body.replies.get(0) {
+            if let Some(sheet) = &reply.add_sheet {
+                if let Some(sheet_id) = sheet.properties.sheet_id {
+                    return Ok(sheet_id);
                 }
+            }
+        }
 
-                return Err(Box::from(format!(
-                    "error retrieving sheet id from the response. spreadsheet_id: {}",
-                    spreadsheet_id
-                )));
-            })?;
-
-        sheet_id
+        return Err(Box::from(format!(
+            "add_summary_sheet: sheet_id not available. spreadsheet_id: {}",
+            spreadsheet_id
+        )));
     }
 }
 

@@ -32,37 +32,37 @@ Self-Assessment,text,New Skill,This is what my team or individual teammates have
 Self-Assessment,text,Skill to Acquire,This is what I still could learn from my team,1
 Self-Assessment,text,Strengths,Strengths,1
 Self-Assessment,text,Improvement Opportunities,Improvements,1
-Team-Feedback,grade,Adaptability,constructively approaches new and unexpected events or announcements.,1
-Team-Feedback,grade,Adaptability,is open to work on the tasks not entirely related to his/her position.,1
-Team-Feedback,grade,Attitude,aims to create a positive working environment around him/herself.,1
-Team-Feedback,grade,Attitude,reacts constructively after making a mistake.,1
-Team-Feedback,grade,Communication,communicates ideas well verbally.,1
-Team-Feedback,grade,Communication,"I don't have misunderstandings with",1
-Team-Feedback,grade,Communication,communicates ideas well in writing.,1
-Team-Feedback,grade,Cross-functional Knowledge,is open to learn new things and expand his/her professional expertise.,1
-Team-Feedback,grade,Cross-functional Knowledge,"has knowledge and experience that goes beyond their job responsibilities, i.e. tools, methodologies, frameworks.",1
-Team-Feedback,grade,Dependability,achieves his/her objectives and goals.,1
-Team-Feedback,grade,Dependability,follows team standards and processes.,1
-Team-Feedback,grade,Dependability,pays attention to detail.,1
-Team-Feedback,grade,Initiative,"is proactive suggesting solutions and improvements, .e. code quality, process, etc.",1
-Team-Feedback,grade,Initiative,takes fast and informed decisions.,1
-Team-Feedback,grade,Leadership,I trust the decisions that,1
-Team-Feedback,grade,Leadership,constructively handles (critical) feedback.,1
-Team-Feedback,grade,Leadership,provides constructive feedback to the team and me.,1
-Team-Feedback,grade,Leadership,values contributions and opinions of other teammates.,1
-Team-Feedback,grade,Organization,is well organized.,1
-Team-Feedback,grade,Organization,can organize teamwork.,1
-Team-Feedback,grade,Organization,is a productive employee.,1
-Team-Feedback,grade,Responsibility,keeps personal involvement high and supports the team when the project gets delayed/stuck.,1
-Team-Feedback,grade,Responsibility,always finishes his/her initiatives.,1
-Team-Feedback,grade,Self-Improvement,sets clear and measurable goals for him/her-self.,1
-Team-Feedback,grade,Self-Improvement,"uses means at his/her disposal (conferences, books, webinars) for continuous self-improvement.",1
-Team-Feedback,grade,Teamwork,offers support to the other team members when needed.,1
-Team-Feedback,grade,Teamwork,"is a team player, collaborates and builds a relationship with the team.",1
-Team-Feedback,grade,Tech. Expertise,possesses all required (tech.) skills for doing his/her job.,1
-Team-Feedback,grade,Tech. Expertise,can teach other teammates in some/any technical discipline.,1
-Team-Feedback,text,New Skill,This is what I have learned from,1
-Team-Feedback,text,Skill to Acquire,This is what I could share knowledge wise with,1
+Team-Feedback,grade,Adaptability,"{name} constructively approaches new and unexpected events or announcements.",1
+Team-Feedback,grade,Adaptability,"{name} is open to work on the tasks not entirely related to his/her position.",1
+Team-Feedback,grade,Attitude,"{name} aims to create a positive working environment around him/herself.",1
+Team-Feedback,grade,Attitude,"{name} reacts constructively after making a mistake.",1
+Team-Feedback,grade,Communication,"{name} communicates ideas well verbally.",1
+Team-Feedback,grade,Communication,"I don't have misunderstandings with {name}",1
+Team-Feedback,grade,Communication,"{name} communicates ideas well in writing.",1
+Team-Feedback,grade,Cross-functional Knowledge,"{name} is open to learn new things and expand his/her professional expertise.",1
+Team-Feedback,grade,Cross-functional Knowledge,"{name} has knowledge and experience that goes beyond their job responsibilities, i.e. tools, methodologies, frameworks.",1
+Team-Feedback,grade,Dependability,"{name} achieves his/her objectives and goals.",1
+Team-Feedback,grade,Dependability,"{name} follows team standards and processes.",1
+Team-Feedback,grade,Dependability,"{name} pays attention to detail.",1
+Team-Feedback,grade,Initiative,"{name} is proactive suggesting solutions and improvements, .e. code quality, process, etc.",1
+Team-Feedback,grade,Initiative,"{name} takes fast and informed decisions.",1
+Team-Feedback,grade,Leadership,"I trust the decisions that {name} takes.",1
+Team-Feedback,grade,Leadership,"{name} constructively handles (critical) feedback.",1
+Team-Feedback,grade,Leadership,"{name} provides constructive feedback to the team and me.",1
+Team-Feedback,grade,Leadership,"{name} values contributions and opinions of other teammates.",1
+Team-Feedback,grade,Organization,"{name} is well organized.",1
+Team-Feedback,grade,Organization,"{name} can organize teamwork.",1
+Team-Feedback,grade,Organization,"{name} is a productive employee.",1
+Team-Feedback,grade,Responsibility,"{name} keeps personal involvement high and supports the team when the project gets delayed/stuck.",1
+Team-Feedback,grade,Responsibility,"{name} always finishes his/her initiatives.",1
+Team-Feedback,grade,Self-Improvement,"{name} sets clear and measurable goals for him/her-self.",1
+Team-Feedback,grade,Self-Improvement,"{name} uses means at his/her disposal (conferences, books, webinars) for continuous self-improvement.",1
+Team-Feedback,grade,Teamwork,"{name} offers support to the other team members when needed.",1
+Team-Feedback,grade,Teamwork,"{name} is a team player, collaborates and builds a relationship with the team.",1
+Team-Feedback,grade,Tech. Expertise,"{name} possesses all required (tech.) skills for doing his/her job.",1
+Team-Feedback,grade,Tech. Expertise,"{name} can teach other teammates in some/any technical discipline.",1
+Team-Feedback,text,New Skill,"This is what I have learned from {name}.",1
+Team-Feedback,text,Skill to Acquire,"This is what I could share knowledge wise with {name}.",1
 Team-Feedback,text,Strengths,Strengths,1
 Team-Feedback,text,Improvement Opportunities,Improvements,1
 Team-Feedback,text,Free Form Feedback,Text that will be shared,1
