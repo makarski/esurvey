@@ -31,6 +31,39 @@ pub enum ResponseKind {
     Text,
 }
 
+impl ResponseKind {
+    pub fn process_data(&self, responses: &Vec<String>) -> Option<String> {
+        match self {
+            ResponseKind::Grade => self.process_grades(responses),
+            ResponseKind::Text => self.process_reviews(responses),
+        }
+    }
+
+    fn process_grades(&self, grades: &Vec<String>) -> Option<String> {
+        if grades.len() == 0 {
+            return None;
+        }
+        let calc = grades
+            .iter()
+            .map(|item| {
+                item.parse::<f32>()
+                    .expect(format!("failed to parse: {}", item).as_ref())
+                // todo: remove expect
+            })
+            .sum::<f32>()
+            / grades.len() as f32;
+
+        Some(calc.to_string())
+    }
+
+    fn process_reviews(&self, reviews: &Vec<String>) -> Option<String> {
+        if reviews.len() == 0 {
+            return None;
+        }
+        Some(reviews.join("\n"))
+    }
+}
+
 impl Display for ResponseKind {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
