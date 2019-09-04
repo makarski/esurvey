@@ -3,10 +3,10 @@ Team-Feedback,grade,Communication,"{name} communicates clearly, efficiently and 
 Team-Feedback,grade,Communication,"{name} selects language tailored to the experience of the audience",1
 Team-Feedback,grade,Communication,"{name} listens actively; acknowledges perspectives and ideas of the others",1
 Team-Feedback,grade,Communication,"{name} provides timely feedback and openly shares opinion",1
-Team-Feedback,grade,Problem Solving,"{name}" structures information into manageable chunks and sets reasonable focus areas",1
-Team-Feedback,grade,Problem Solving,"{name} solves problems with pragmatic mentality",1
-Team-Feedback,grade,Problem Solving,"{name} designs and delivers high-quality and accurate output",1
-Team-Feedback,grade,Problem Solving,"{name} considers and understands complex topics and their impact",1
+Team-Feedback,grade,Problem Solving,"{name} structures information into manageable chunks and sets reasonable focus areas.",1
+Team-Feedback,grade,Problem Solving,"{name} solves problems with pragmatic mentality.",1
+Team-Feedback,grade,Problem Solving,"{name} designs and delivers high-quality and accurate output.",1
+Team-Feedback,grade,Problem Solving,"{name} considers and understands complex topics and their impact.",1
 Team-Feedback,grade,Organization,"{name} deploys his/her time in an efficient, cost conscious manner",1
 Team-Feedback,grade,Organization,"{name} is a self-starter and can efficiently work with ambiguous requirements",1
 Team-Feedback,grade,Teamwork,"{name} is actively using expertise of other teams within the company",1
