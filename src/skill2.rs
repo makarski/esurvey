@@ -55,7 +55,10 @@ impl<'a> Survey<'a> {
 
             let template = match self.find_config_template(qst_stmt) {
                 Some(t) => t,
-                None => continue,
+                None => {
+                    eprintln!("> template not found for: {}: {}", self.kind, qst_stmt);
+                    continue;
+                }
             };
 
             for grade_in in per_category {
