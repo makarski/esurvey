@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use crate::config::{QuestionConfig, ResponseKind};
+use crate::config::QuestionConfig;
 
+#[derive(Debug)]
 pub struct Responses {
+    pub assessment_kind: String,
     pub category_name: String,
     vals: Vec<String>,
 }
 
 impl Responses {
-    fn new(category_name: String) -> Self {
+    fn new(assessment_kind: String, category_name: String) -> Self {
         Responses {
+            assessment_kind: assessment_kind,
             category_name: category_name,
             vals: Vec::new(),
         }
@@ -26,17 +29,12 @@ impl Responses {
 }
 
 pub struct Survey<'a> {
-    kind: ResponseKind,
     templates: &'a Vec<QuestionConfig>,
 }
 
 impl<'a> Survey<'a> {
-    pub fn new(
-        kind: ResponseKind,
-        templates: &'a Vec<QuestionConfig>,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(templates: &'a Vec<QuestionConfig>) -> Result<Self, Box<dyn Error>> {
         Ok(Survey {
-            kind: kind,
             templates: templates,
         })
     }
@@ -53,10 +51,11 @@ impl<'a> Survey<'a> {
                 per_category
             ))?;
 
+            // todo: optimize here
             let template = match self.find_config_template(qst_stmt) {
                 Some(t) => t,
                 None => {
-                    eprintln!("> template not found for: {}: {}", self.kind, qst_stmt);
+                    eprintln!("> template not found for: {}", qst_stmt);
                     continue;
                 }
             };
@@ -64,7 +63,7 @@ impl<'a> Survey<'a> {
             for grade_in in per_category {
                 let processed_answer = template
                     .eval_answer(grade_in.as_ref())
-                    .expect(format!("failed evalling: {}, {}", grade_in, self.kind).as_ref());
+                    .expect(format!("failed evalling: {}", grade_in).as_ref());
 
                 category_map
                     .entry(template.category.as_ref())
@@ -72,7 +71,10 @@ impl<'a> Survey<'a> {
                         ctgr_data.write(&processed_answer);
                     })
                     .or_insert_with(|| {
-                        let mut ctgr_data = Responses::new(template.category.clone());
+                        let mut ctgr_data = Responses::new(
+                            template.assessment_kind.clone(),
+                            template.category.clone(),
+                        );
                         ctgr_data.write(&processed_answer);
                         ord_categories.push(template.category.as_ref());
                         ctgr_data
@@ -92,8 +94,7 @@ impl<'a> Survey<'a> {
 
     fn find_config_template(&self, input_question: &String) -> Option<&QuestionConfig> {
         self.templates
-            .into_iter()
-            .filter(|tmplt| tmplt.response_kind == self.kind)
+            .iter()
             .find(|tmplt| tmplt.match_template(input_question))
     }
 }

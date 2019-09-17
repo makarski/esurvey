@@ -3,8 +3,10 @@ use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
 
 use crate::chart;
+use crate::config;
 use crate::drive;
 use crate::sheets;
+use crate::summary;
 
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
 const CHART_NAME: &str = "Chart Results";
@@ -31,12 +33,28 @@ impl Evaluator {
         let spreadsheet = client.get_spreadsheet(&token.access_token, &flags.spreadsheet_id)?;
         let spreadsheet_client = drive::SpreadsheetClient::new(&client, &token.access_token);
 
-        let summary = spreadsheet_client.build_summary(
-            spreadsheet.sheets,
-            &flags.spreadsheet_id,
-            &flags.config_file,
-            &flags.first_name,
+        let templates = config::read(
+            flags.config_file,
+            vec![("{name}", flags.first_name.as_ref())],
         )?;
+
+        let spreadsheet_data =
+            spreadsheet_client.retrieve_sheet_data(&spreadsheet.sheets, &flags.spreadsheet_id)?;
+
+        let mut summary = summary::Summary::new();
+
+        for response_kind in [config::ResponseKind::Grade, config::ResponseKind::Text].iter() {
+            let templates_by_kind = templates
+                .iter()
+                .cloned()
+                .filter(|tmplt| tmplt.response_kind == *response_kind)
+                .collect::<Vec<config::QuestionConfig>>();
+
+            let responses =
+                spreadsheet_client.build_responses(&spreadsheet_data, &templates_by_kind)?;
+
+            summary.set_by_kind(response_kind, responses);
+        }
 
         let summary_sheet_id =
             spreadsheet_client.add_summary_sheet(SUMMARY_SHEET_NAME, &flags.spreadsheet_id)?;
