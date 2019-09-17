@@ -3,26 +3,7 @@ use std::error::Error as std_err;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::io::Error as io_err;
 use std::path::Path;
-use std::str::FromStr;
-
-#[derive(PartialEq, Clone)]
-pub struct AssessmentKind(pub String);
-
-impl FromStr for AssessmentKind {
-    type Err = io_err;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AssessmentKind(String::from(s)))
-    }
-}
-
-impl Display for AssessmentKind {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Eq, PartialEq, Clone, Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -92,7 +73,7 @@ pub fn read<P: AsRef<Path>>(
     Ok(out)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct QuestionConfig {
     pub assessment_kind: String,
