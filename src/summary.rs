@@ -5,8 +5,8 @@ use std::ops::Deref;
 
 #[derive(Debug, Default)]
 pub struct Summary {
-    texts: Vec<Vec<Responses>>,
-    grades: Vec<Vec<Responses>>,
+    texts: Vec<Responses>,
+    grades: Vec<Responses>,
 }
 
 impl Summary {
@@ -14,10 +14,11 @@ impl Summary {
         Summary::default()
     }
 
-    pub fn set_by_kind(&mut self, response_kind: &ResponseKind, v: Vec<Vec<Responses>>) {
+    pub fn set_by_kind(&mut self, response_kind: &ResponseKind, v: Vec<Responses>) {
         match response_kind {
             &ResponseKind::Grade => self.grades = v,
             &ResponseKind::Text => self.texts = v,
+            &ResponseKind::Discriminator => {}
         }
     }
 
@@ -26,53 +27,56 @@ impl Summary {
         let response_kinds = [ResponseKind::Grade, ResponseKind::Text].into_iter();
 
         for (response_kind, data) in response_kinds.zip([self.grades, self.texts].into_iter()) {
-            let rows = process_grades_reviews(response_kind, data);
-            all_rows.push(rows);
+            if let Some(rows) = generate_summary_rows(response_kind, data) {
+                all_rows.push(rows);
+            }
         }
 
         all_rows
     }
 }
 
-fn process_grades_reviews(response_kind: &ResponseKind, data: &Vec<Vec<Responses>>) -> SummaryRows {
+fn generate_summary_rows(
+    response_kind: &ResponseKind,
+    data: &Vec<Responses>,
+) -> Option<SummaryRows> {
     let assessment_kind = |r: &Responses| -> String { r.assessment_kind.clone() };
     let category_name = |r: &Responses| -> String { r.category_name.clone() };
 
     match response_kind {
-        ResponseKind::Grade => generate_summary_rows(
+        ResponseKind::Grade => Some(fill_summary_rows(
             response_kind,
             data,
             Box::new(category_name),
             Box::new(assessment_kind),
-        ),
-        ResponseKind::Text => generate_summary_rows(
+        )),
+        ResponseKind::Text => Some(fill_summary_rows(
             response_kind,
             data,
             Box::new(assessment_kind),
             Box::new(category_name),
-        ),
+        )),
+        ResponseKind::Discriminator => None,
     }
 }
 
-fn generate_summary_rows(
+fn fill_summary_rows(
     response_kind: &ResponseKind,
-    reviews: &Vec<Vec<Responses>>,
+    by_category: &Vec<Responses>,
     header: Box<dyn Fn(&Responses) -> String>,
     cell_key: Box<dyn Fn(&Responses) -> String>,
 ) -> SummaryRows {
     let mut rows = SummaryRows::new();
-    for by_category in reviews.into_iter() {
-        for category in by_category {
-            rows.add_header("Data", header(&category).as_ref());
+    for category in by_category {
+        rows.add_header("Data", header(&category).as_ref());
 
-            rows.add_cell(
-                cell_key(&category).as_ref(),
-                response_kind
-                    .process_data(category.read())
-                    .unwrap()
-                    .as_ref(),
-            );
-        }
+        rows.add_cell(
+            cell_key(&category).as_ref(),
+            response_kind
+                .process_data(category.read())
+                .unwrap()
+                .as_ref(),
+        );
     }
 
     rows

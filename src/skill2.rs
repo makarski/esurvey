@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use crate::config::QuestionConfig;
+use crate::config::{QuestionConfig, ResponseKind};
+use crate::sheets::spreadsheets_values::SpreadsheetValueRange;
 
 #[derive(Debug)]
 pub struct Responses {
@@ -39,10 +40,28 @@ impl<'a> Survey<'a> {
         })
     }
 
-    pub fn scan(&self, raw_data: &Vec<Vec<String>>) -> Result<Vec<Responses>, Box<dyn Error>> {
+    pub fn scan_all(
+        &self,
+        from_sheets: &Vec<SpreadsheetValueRange>,
+    ) -> Result<Vec<Responses>, Box<dyn Error>> {
+        let raw_data: Vec<&Vec<String>> = from_sheets
+            .iter()
+            .flat_map(|sheet_raw_data| &sheet_raw_data.values)
+            .collect();
+
+        self.scan(raw_data)
+    }
+
+    // todo:
+    //   - optimize against clones
+    //   - discriminator config right now works with the assumption that it is the first entry:
+    //      solution: first collect discriminators, then process responses
+    fn scan(&self, raw_data: Vec<&Vec<String>>) -> Result<Vec<Responses>, Box<dyn Error>> {
         let answers = raw_data.into_iter().skip(2);
-        let mut category_map: HashMap<&str, Responses> = HashMap::new();
-        let mut ord_categories: Vec<&str> = Vec::new();
+        let mut category_map: HashMap<String, Responses> = HashMap::new();
+        let mut ord_categories: Vec<String> = Vec::new();
+
+        let mut discriminators: Vec<String> = Vec::new();
 
         for answer in answers {
             let mut per_category = answer.into_iter();
@@ -60,23 +79,36 @@ impl<'a> Survey<'a> {
                 }
             };
 
-            for grade_in in per_category {
+            for (index, grade_in) in per_category.enumerate() {
                 let processed_answer = template
                     .eval_answer(grade_in.as_ref())
                     .expect(format!("failed evalling: {}", grade_in).as_ref());
 
+                match &template.response_kind {
+                    &ResponseKind::Discriminator => {
+                        discriminators.push(processed_answer);
+                        continue;
+                    }
+                    _ => {}
+                };
+
+                let assessement_title: String = match discriminators.get(index) {
+                    Some(t) => t.clone(),
+                    None => template.assessment_kind.clone(),
+                };
+
+                let discriminator: String = format!("{}:{}", assessement_title, template.category);
+
                 category_map
-                    .entry(template.category.as_ref())
+                    .entry(discriminator.clone())
                     .and_modify(|ctgr_data| {
                         ctgr_data.write(&processed_answer);
                     })
                     .or_insert_with(|| {
-                        let mut ctgr_data = Responses::new(
-                            template.assessment_kind.clone(),
-                            template.category.clone(),
-                        );
+                        let mut ctgr_data =
+                            Responses::new(assessement_title.clone(), template.category.clone());
                         ctgr_data.write(&processed_answer);
-                        ord_categories.push(template.category.as_ref());
+                        ord_categories.push(discriminator);
                         ctgr_data
                     });
             }
@@ -84,7 +116,7 @@ impl<'a> Survey<'a> {
 
         let mut category_data: Vec<Responses> = Vec::new();
         for category_name in ord_categories {
-            if let Some(scanned) = category_map.remove(category_name) {
+            if let Some(scanned) = category_map.remove(&category_name) {
                 category_data.push(scanned);
             }
         }

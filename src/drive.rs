@@ -1,6 +1,4 @@
-use crate::config::QuestionConfig;
 use crate::sheets;
-use crate::skill2::{Responses, Survey};
 use crate::summary::Summary;
 
 use std::error::Error as std_err;
@@ -34,21 +32,6 @@ impl<'a> SpreadsheetClient<'a> {
             .sheets_client
             .get_batch_values(&self.access_token, spreadsheet_id, sheet_titles)?
             .value_ranges)
-    }
-
-    pub fn build_responses(
-        &self,
-        val_ranges: &Vec<SpreadsheetValueRange>,
-        templates: &Vec<QuestionConfig>,
-    ) -> Result<Vec<Vec<Responses>>, Box<dyn std_err>> {
-        let survey = Survey::new(templates)?;
-        let mut res = Vec::new();
-
-        for val_range in val_ranges.iter() {
-            res.push(survey.scan(&val_range.values)?);
-        }
-
-        Ok(res)
     }
 
     pub fn save_summary(

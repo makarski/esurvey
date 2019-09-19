@@ -10,6 +10,10 @@ use std::path::Path;
 pub enum ResponseKind {
     Grade,
     Text,
+
+    // If set in config, the responses will be assigned based on the
+    // value provided in this field
+    Discriminator,
 }
 
 impl ResponseKind {
@@ -17,6 +21,7 @@ impl ResponseKind {
         match self {
             ResponseKind::Grade => self.process_grades(responses),
             ResponseKind::Text => self.process_reviews(responses),
+            ResponseKind::Discriminator => None,
         }
     }
 
@@ -50,6 +55,7 @@ impl Display for ResponseKind {
         match self {
             ResponseKind::Grade => write!(f, "grade"),
             ResponseKind::Text => write!(f, "text"),
+            ResponseKind::Discriminator => write!(f, "discriminator"),
         }
     }
 }
@@ -99,7 +105,7 @@ impl QuestionConfig {
     pub fn eval_answer(&self, input: &str) -> Result<String, Box<dyn std_err>> {
         match self.response_kind {
             ResponseKind::Grade => Ok((input.parse::<f32>()? * self.weight).to_string()),
-            ResponseKind::Text => Ok(input.to_string()),
+            ResponseKind::Text | ResponseKind::Discriminator => Ok(input.to_string()),
         }
     }
 
