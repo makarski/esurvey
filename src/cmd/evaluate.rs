@@ -6,7 +6,10 @@ use crate::chart;
 use crate::config;
 use crate::drive;
 use crate::sheets;
+use crate::skill2::Survey;
 use crate::summary;
+
+use config::ResponseKind;
 
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
 const CHART_NAME: &str = "Chart Results";
@@ -43,15 +46,21 @@ impl Evaluator {
 
         let mut summary = summary::Summary::new();
 
-        for response_kind in [config::ResponseKind::Grade, config::ResponseKind::Text].iter() {
+        for response_kind in [ResponseKind::Grade, ResponseKind::Text].iter() {
             let templates_by_kind = templates
                 .iter()
                 .cloned()
-                .filter(|tmplt| tmplt.response_kind == *response_kind)
+                .filter(|tmplt| {
+                    // todo: search for discriminators separately
+                    tmplt.response_kind == *response_kind
+                        || tmplt.response_kind == ResponseKind::Discriminator
+                })
                 .collect::<Vec<config::QuestionConfig>>();
 
-            let responses =
-                spreadsheet_client.build_responses(&spreadsheet_data, &templates_by_kind)?;
+            println!("> scanning for: {}", response_kind);
+
+            let survey = Survey::new(&templates_by_kind)?;
+            let responses = survey.scan_all(&spreadsheet_data)?;
 
             summary.set_by_kind(response_kind, responses);
         }
