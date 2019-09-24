@@ -4,6 +4,8 @@ use std::error::Error;
 use crate::config::{QuestionConfig, ResponseKind};
 use crate::sheets::spreadsheets_values::SpreadsheetValueRange;
 
+pub mod summary;
+
 #[derive(Debug)]
 pub struct Responses {
     pub assessment_kind: String,

@@ -14,8 +14,7 @@ mod cmd;
 mod config;
 mod drive;
 mod sheets;
-mod skill2;
-mod summary;
+mod survey;
 
 fn main() {
     cmd::Cmd::from_str(&args().nth(1).expect("failed to retrieve command name"))

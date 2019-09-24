@@ -1,5 +1,5 @@
 use crate::sheets;
-use crate::summary::Summary;
+use crate::survey::summary::Summary;
 
 use std::error::Error as std_err;
 
@@ -9,14 +9,14 @@ use sheets::spreadsheets_values::{MajorDimension, SpreadsheetValueRange};
 
 pub struct SpreadsheetClient<'a> {
     sheets_client: &'a sheets::Client,
-    access_token: String,
+    access_token: &'a str,
 }
 
 impl<'a> SpreadsheetClient<'a> {
-    pub fn new(sheets_client: &'a sheets::Client, access_token: &str) -> Self {
+    pub fn new(sheets_client: &'a sheets::Client, access_token: &'a str) -> Self {
         SpreadsheetClient {
             sheets_client: sheets_client,
-            access_token: access_token.to_owned(),
+            access_token: access_token,
         }
     }
 
@@ -30,7 +30,7 @@ impl<'a> SpreadsheetClient<'a> {
 
         Ok(self
             .sheets_client
-            .get_batch_values(&self.access_token, spreadsheet_id, sheet_titles)?
+            .get_batch_values(self.access_token, spreadsheet_id, sheet_titles)?
             .value_ranges)
     }
 
@@ -48,7 +48,7 @@ impl<'a> SpreadsheetClient<'a> {
             };
 
             self.sheets_client.append_values(
-                &self.access_token,
+                self.access_token,
                 spreadsheet_id.to_owned(),
                 range.to_owned(),
                 &spreadsheet_values,
@@ -80,7 +80,7 @@ impl<'a> SpreadsheetClient<'a> {
 
         let response_body = self
             .sheets_client
-            .batch_update_spreadsheet(self.access_token.as_str(), spreadsheet_id, &batch_update)
+            .batch_update_spreadsheet(self.access_token, spreadsheet_id, &batch_update)
             .map_err(|err| format!("add_summary_sheet: {}", err))?;
 
         if let Some(reply) = response_body.replies.get(0) {
