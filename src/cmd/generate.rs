@@ -3,12 +3,8 @@ use std::env::args;
 use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
 
-use crate::appsscript;
-use appsscript::template::Template;
-use appsscript::ProjectsClient;
-
-use crate::config;
-use crate::config::{QuestionConfig, ResponseKind};
+use crate::appsscript::{template::Template, ProjectsClient};
+use crate::config::{self, QuestionConfig, ResponseKind};
 
 #[derive(Default, Debug)]
 struct Flags {

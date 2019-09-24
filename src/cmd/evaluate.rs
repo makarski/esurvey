@@ -3,13 +3,12 @@ use std::error::Error;
 use std::io::{Error as io_err, ErrorKind as io_err_kind};
 
 use crate::chart;
-use crate::config;
+use crate::config::{self, ResponseKind};
 use crate::drive;
 use crate::sheets;
-use crate::skill2::Survey;
-use crate::summary;
+use crate::survey::{summary::Summary, Survey};
 
-use config::ResponseKind;
+use super::handle_auth;
 
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
 const CHART_NAME: &str = "Chart Results";
@@ -26,7 +25,7 @@ impl Evaluator {
     }
 
     pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let token = self._auth_client.access_token(super::handle_auth)?;
+        let token = self._auth_client.access_token(handle_auth)?;
 
         let flags = parse_flags()?;
         println!("entered id: {}", flags.spreadsheet_id);
@@ -44,7 +43,7 @@ impl Evaluator {
         let spreadsheet_data =
             spreadsheet_client.retrieve_sheet_data(&spreadsheet.sheets, &flags.spreadsheet_id)?;
 
-        let mut summary = summary::Summary::new();
+        let mut summary = Summary::new();
 
         for response_kind in [ResponseKind::Grade, ResponseKind::Text].iter() {
             let templates_by_kind = templates

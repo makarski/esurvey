@@ -12,6 +12,7 @@ Setup
 
 Running
 -------
+
 #### Generate [Apps Script](https://developers.google.com/apps-script/api) for automatic form generation
 
 ```sh
@@ -35,3 +36,18 @@ OAUTH_CFG_FILE=/mypath/credentials.json probation-csv eval \
     -templates=overall-grading.csv \
     -first-name=John
 ```
+
+#### Survey Configuration
+
+The application is configured in an `csv` file. The name of the file is required to provide under the `-templates` flag.
+
+Templates file structure:
+
+- AssessmentKind (`String`) - Description here
+- ResponseKind (`Enum`) - Description here
+    - `Grade`
+    - `Text`
+    - `Discriminator`
+- Category (`String`) - Description here
+- Template (`String`) - Description here
+- Weight (`Float`) - Description here

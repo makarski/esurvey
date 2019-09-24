@@ -1,5 +1,5 @@
 use crate::config::ResponseKind;
-use crate::skill2::Responses;
+use crate::survey::Responses;
 use std::collections::HashMap;
 use std::ops::Deref;
 
@@ -74,7 +74,7 @@ fn fill_summary_rows(
             cell_key(&category).as_ref(),
             response_kind
                 .process_data(category.read())
-                .unwrap()
+                .unwrap() // todo: check unwrap
                 .as_ref(),
         );
     }

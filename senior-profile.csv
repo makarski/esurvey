@@ -1,4 +1,4 @@
-Assessment Kind,Response Kind,Category,Template,Weight
+AssessmentKind,ResponseKind,Category,Template,Weight
 Team-Feedback,grade,Communication,"{name} communicates clearly, efficiently and in a structured manner",1
 Team-Feedback,grade,Communication,"{name} selects language tailored to the experience of the audience",1
 Team-Feedback,grade,Communication,"{name} listens actively; acknowledges perspectives and ideas of the others",1
