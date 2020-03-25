@@ -30,8 +30,8 @@ Self-Assessment,grade,Tech. Expertise,I possess all required (tech.) skills for 
 Self-Assessment,grade,Tech. Expertise,I can teach to other teammates in some/any technical discipline.,1
 Self-Assessment,text,New Skill,This is what my team or individual teammates have learned from me,1
 Self-Assessment,text,Skill to Acquire,This is what I still could learn from my team,1
-Self-Assessment,text,Strengths,Strengths,1
-Self-Assessment,text,Improvement Opportunities,Improvements,1
+Self-Assessment,text,Strengths,My Strengths,1
+Self-Assessment,text,Improvement Opportunities,My Improvements,1
 Team-Feedback,grade,Adaptability,"{name} constructively approaches new and unexpected events or announcements.",1
 Team-Feedback,grade,Adaptability,"{name} is open to work on the tasks not entirely related to his/her position.",1
 Team-Feedback,grade,Attitude,"{name} aims to create a positive working environment around him/herself.",1
@@ -63,6 +63,6 @@ Team-Feedback,grade,Tech. Expertise,"{name} possesses all required (tech.) skill
 Team-Feedback,grade,Tech. Expertise,"{name} can teach other teammates in some/any technical discipline.",1
 Team-Feedback,text,New Skill,"This is what I have learned from {name}.",1
 Team-Feedback,text,Skill to Acquire,"This is what I could share knowledge wise with {name}.",1
-Team-Feedback,text,Strengths,Strengths,1
-Team-Feedback,text,Improvement Opportunities,Improvements,1
+Team-Feedback,text,Strengths,"Strengths: {name}",1
+Team-Feedback,text,Improvement Opportunities,"Improvements: {name}",1
 Team-Feedback,text,Free Form Feedback,Text that will be shared,1
