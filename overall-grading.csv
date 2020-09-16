@@ -65,4 +65,4 @@ Team-Feedback,text,New Skill,"This is what I have learned from {name}.",1
 Team-Feedback,text,Skill to Acquire,"This is what I could share knowledge wise with {name}.",1
 Team-Feedback,text,Strengths,"Strengths: {name}",1
 Team-Feedback,text,Improvement Opportunities,"Improvements: {name}",1
-Team-Feedback,text,Free Form Feedback,Text that will be shared,1
+Team-Feedback,text,Free Form Feedback,Anything you want to add,1
