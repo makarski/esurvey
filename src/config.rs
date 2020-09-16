@@ -1,9 +1,11 @@
-use csv;
-use std::error::Error as std_err;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::fs::File;
-use std::path::Path;
+use std::{
+    error::Error as std_err,
+    fmt::{self, Display, Formatter},
+    fs::File,
+    path::Path,
+};
+
+use serde_derive::Deserialize;
 
 #[derive(Eq, PartialEq, Clone, Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -1,3 +1,5 @@
+use serde_derive::{Deserialize, Serialize};
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SpreadsheetBatchUpdate {
