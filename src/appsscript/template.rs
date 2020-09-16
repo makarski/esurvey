@@ -10,6 +10,7 @@ pub struct Template<'a> {
 }
 
 impl<'a> Template<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         assessment_kind: &'a str,
         first_name: String,
@@ -37,7 +38,7 @@ impl<'a> Template<'a> {
         let concat_text_qs = self.text_questions.join("\",\"");
 
         format!(
-    r###"function createForm() {{
+            r###"function createForm() {{
    // configuration
    var cPersonName = "{first_name}";
    var cPersonSurname = "{last_name}";
@@ -101,14 +102,14 @@ impl<'a> Template<'a> {
    DriveApp.getRootFolder().removeFile(file); 
 }}
 "###,
-    assessment_kind = self.assessment_kind,
-    first_name = self.first_name,
-    last_name = self.last_name,
-    occasion = self.occasion,
-    dir_id = self.dir_id,
-    description = self.description,
-    concat_graded_qs = concat_graded_qs,
-    concat_text_qs = concat_text_qs,
-  )
+            assessment_kind = self.assessment_kind,
+            first_name = self.first_name,
+            last_name = self.last_name,
+            occasion = self.occasion,
+            dir_id = self.dir_id,
+            description = self.description,
+            concat_graded_qs = concat_graded_qs,
+            concat_text_qs = concat_text_qs,
+        )
     }
 }

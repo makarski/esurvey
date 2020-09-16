@@ -16,8 +16,8 @@ pub struct Responses {
 impl Responses {
     fn new(assessment_kind: String, category_name: String) -> Self {
         Responses {
-            assessment_kind: assessment_kind,
-            category_name: category_name,
+            assessment_kind,
+            category_name,
             vals: Vec::new(),
         }
     }
@@ -32,19 +32,17 @@ impl Responses {
 }
 
 pub struct Survey<'a> {
-    templates: &'a Vec<QuestionConfig>,
+    templates: &'a [QuestionConfig],
 }
 
 impl<'a> Survey<'a> {
-    pub fn new(templates: &'a Vec<QuestionConfig>) -> Result<Self, Box<dyn Error>> {
-        Ok(Survey {
-            templates: templates,
-        })
+    pub fn new(templates: &'a [QuestionConfig]) -> Result<Self, Box<dyn Error>> {
+        Ok(Survey { templates })
     }
 
     pub fn scan_all(
         &self,
-        from_sheets: &Vec<SpreadsheetValueRange>,
+        from_sheets: &[SpreadsheetValueRange],
     ) -> Result<Vec<Responses>, Box<dyn Error>> {
         let raw_data: Vec<&Vec<String>> = from_sheets
             .iter()
@@ -66,7 +64,7 @@ impl<'a> Survey<'a> {
         let mut discriminators: Vec<String> = Vec::new();
 
         for answer in answers {
-            let mut per_category = answer.into_iter();
+            let mut per_category = answer.iter();
             let qst_stmt = per_category.next().ok_or(format!(
                 "error scanning category question in: {:#?}",
                 per_category
@@ -84,14 +82,11 @@ impl<'a> Survey<'a> {
             for (index, grade_in) in per_category.enumerate() {
                 let processed_answer = template
                     .eval_answer(grade_in.as_ref())
-                    .expect(format!("failed evalling: {}", grade_in).as_ref());
+                    .unwrap_or_else(|_| panic!("failed evalling: {}", grade_in));
 
-                match &template.response_kind {
-                    &ResponseKind::Discriminator => {
-                        discriminators.push(processed_answer);
-                        continue;
-                    }
-                    _ => {}
+                if let ResponseKind::Discriminator = template.response_kind {
+                    discriminators.push(processed_answer);
+                    continue;
                 };
 
                 let assessement_title: String = match discriminators.get(index) {
@@ -126,7 +121,7 @@ impl<'a> Survey<'a> {
         Ok(category_data)
     }
 
-    fn find_config_template(&self, input_question: &String) -> Option<&QuestionConfig> {
+    fn find_config_template(&self, input_question: &str) -> Option<&QuestionConfig> {
         self.templates
             .iter()
             .find(|tmplt| tmplt.match_template(input_question))

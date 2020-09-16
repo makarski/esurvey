@@ -23,7 +23,7 @@ pub fn add_summary_chart(
                 domain: ChartData {
                     source_range: ChartSourceRange {
                         sources: vec![GridRange {
-                            sheet_id: sheet_id,
+                            sheet_id,
                             start_row_index: 0,
                             end_row_index: 1,
                             start_column_index: 0,
@@ -38,7 +38,7 @@ pub fn add_summary_chart(
                     series: ChartData {
                         source_range: ChartSourceRange {
                             sources: vec![GridRange {
-                                sheet_id: sheet_id,
+                                sheet_id,
                                 start_row_index: 1,
                                 end_row_index: 2,
                                 start_column_index: 0,
@@ -55,7 +55,7 @@ pub fn add_summary_chart(
                     series: ChartData {
                         source_range: ChartSourceRange {
                             sources: vec![GridRange {
-                                sheet_id: sheet_id,
+                                sheet_id,
                                 start_row_index: 2,
                                 end_row_index: 3,
                                 start_column_index: 0,

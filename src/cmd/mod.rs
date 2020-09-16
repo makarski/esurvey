@@ -4,8 +4,6 @@ use std::io::{stdin, Error as io_err, ErrorKind as io_err_kind};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use gauth;
-
 pub mod evaluate;
 pub mod generate;
 

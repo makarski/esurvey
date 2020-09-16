@@ -68,7 +68,7 @@ impl ProjectsClient {
                     File {
                         name: "create_survey".to_owned(),
                         file_type: FileType::ServerJs,
-                        source: source,
+                        source,
                         ..Default::default()
                     },
                     File {

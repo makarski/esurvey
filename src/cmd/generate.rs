@@ -73,12 +73,12 @@ impl Generator {
 
     fn config_questions(
         &self,
-        templates: &Vec<QuestionConfig>,
+        templates: &[QuestionConfig],
         response_kind: ResponseKind,
         assessment_kind: &str,
     ) -> Result<Vec<String>, Box<dyn Error>> {
         Ok(templates
-            .into_iter()
+            .iter()
             .filter(|question| {
                 (question.response_kind == response_kind)
                     && (question.assessment_kind.to_lowercase() == *assessment_kind.to_lowercase())
@@ -92,7 +92,7 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
     let mut flags = Flags::default();
 
     for pair in args().skip(2).collect::<Vec<String>>() {
-        let pairs = pair.split_terminator("=").collect::<Vec<&str>>();
+        let pairs = pair.split_terminator('=').collect::<Vec<&str>>();
 
         if pairs.len() < 2 {
             continue;
@@ -130,12 +130,12 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
         }
     }
 
-    if empty_fields.len() == 0 {
-        return Ok(flags);
+    if empty_fields.is_empty() {
+        Ok(flags)
+    } else {
+        Err(Box::new(io_err::new(
+            io_err_kind::InvalidInput,
+            format!("missing flag args: {:#?}", empty_fields.join(", ")),
+        )))
     }
-
-    return Err(Box::new(io_err::new(
-        io_err_kind::InvalidInput,
-        format!("missing flag args: {:#?}", empty_fields.join(", ")),
-    )));
 }

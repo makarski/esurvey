@@ -15,15 +15,15 @@ pub struct SpreadsheetClient<'a> {
 impl<'a> SpreadsheetClient<'a> {
     pub fn new(sheets_client: &'a sheets::Client, access_token: &'a str) -> Self {
         SpreadsheetClient {
-            sheets_client: sheets_client,
-            access_token: access_token,
+            sheets_client,
+            access_token,
         }
     }
 
     pub fn retrieve_sheet_data(
         &self,
-        sheet_items: &Vec<Sheet>,
-        spreadsheet_id: &String,
+        sheet_items: &[Sheet],
+        spreadsheet_id: &str,
     ) -> Result<Vec<SpreadsheetValueRange>, Box<dyn std_err>> {
         let sheet_titles = retrieve_sheet_titles(sheet_items);
         println!("sheet titles: > {:#?}", &sheet_titles);
@@ -91,14 +91,14 @@ impl<'a> SpreadsheetClient<'a> {
             }
         }
 
-        return Err(Box::from(format!(
+        Err(Box::from(format!(
             "add_summary_sheet: sheet_id not available. spreadsheet_id: {}",
             spreadsheet_id
-        )));
+        )))
     }
 }
 
-fn retrieve_sheet_titles(sheet_items: &Vec<Sheet>) -> Vec<String> {
+fn retrieve_sheet_titles(sheet_items: &[Sheet]) -> Vec<String> {
     sheet_items
         .iter()
         .map(|sheet| sheet.properties.title.clone())

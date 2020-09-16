@@ -15,18 +15,18 @@ impl Summary {
     }
 
     pub fn set_by_kind(&mut self, response_kind: &ResponseKind, v: Vec<Responses>) {
-        match response_kind {
-            &ResponseKind::Grade => self.grades = v,
-            &ResponseKind::Text => self.texts = v,
-            &ResponseKind::Discriminator => {}
+        match *response_kind {
+            ResponseKind::Grade => self.grades = v,
+            ResponseKind::Text => self.texts = v,
+            ResponseKind::Discriminator => {}
         }
     }
 
     pub fn generate_rows(self) -> Vec<SummaryRows> {
         let mut all_rows = Vec::with_capacity(2);
-        let response_kinds = [ResponseKind::Grade, ResponseKind::Text].into_iter();
+        let response_kinds = [ResponseKind::Grade, ResponseKind::Text].iter();
 
-        for (response_kind, data) in response_kinds.zip([self.grades, self.texts].into_iter()) {
+        for (response_kind, data) in response_kinds.zip([self.grades, self.texts].iter()) {
             if let Some(rows) = generate_summary_rows(response_kind, data) {
                 all_rows.push(rows);
             }
@@ -36,10 +36,7 @@ impl Summary {
     }
 }
 
-fn generate_summary_rows(
-    response_kind: &ResponseKind,
-    data: &Vec<Responses>,
-) -> Option<SummaryRows> {
+fn generate_summary_rows(response_kind: &ResponseKind, data: &[Responses]) -> Option<SummaryRows> {
     let assessment_kind = |r: &Responses| -> String { r.assessment_kind.clone() };
     let category_name = |r: &Responses| -> String { r.category_name.clone() };
 
@@ -62,7 +59,7 @@ fn generate_summary_rows(
 
 fn fill_summary_rows(
     response_kind: &ResponseKind,
-    by_category: &Vec<Responses>,
+    by_category: &[Responses],
     header: Box<dyn Fn(&Responses) -> String>,
     cell_key: Box<dyn Fn(&Responses) -> String>,
 ) -> SummaryRows {
@@ -96,10 +93,9 @@ impl SummaryRows {
     }
 
     fn add_header(&mut self, group_key: &str, v: &str) {
-        if let Some(_) = self.unique_entry_exists(group_key, v) {
-            return;
+        if self.unique_entry_exists(group_key, v).is_none() {
+            self.add_cell(group_key, v);
         }
-        self.add_cell(group_key, v);
     }
 
     fn add_cell(&mut self, group_key: &str, v: &str) {
