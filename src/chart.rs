@@ -3,7 +3,6 @@ use crate::sheets;
 use sheets::basic_chart::*;
 use sheets::spreadsheets::{ChartSpec, EmbeddedChart, EmbeddedObjectPosition};
 use sheets::spreadsheets_batch_update::*;
-use std::error::Error;
 
 // https://developers.google.com/sheets/api/samples/charts#add_a_column_chart
 pub fn add_summary_chart(
@@ -12,7 +11,7 @@ pub fn add_summary_chart(
     spreadsheet_id: &str,
     sheet_id: u64,
     title: String,
-) -> Result<(), Box<dyn Error>> {
+) -> anyhow::Result<()> {
     let chart_spec = ChartSpec {
         title: Some(title),
         basic_chart: Some(BasicChartSpec {

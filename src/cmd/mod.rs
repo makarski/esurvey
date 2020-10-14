@@ -13,7 +13,7 @@ pub enum Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> Result<(), Box<dyn Error>> {
+    pub fn run(self) -> anyhow::Result<()> {
         match self {
             Cmd::Generate(cmd) => cmd.run(),
             Cmd::Evaluate(cmd) => cmd.run(),

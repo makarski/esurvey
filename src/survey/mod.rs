@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::error::Error;
+
+use anyhow::anyhow;
 
 use crate::config::{QuestionConfig, ResponseKind};
 use crate::sheets::spreadsheets_values::SpreadsheetValueRange;
@@ -36,14 +37,14 @@ pub struct Survey<'a> {
 }
 
 impl<'a> Survey<'a> {
-    pub fn new(templates: &'a [QuestionConfig]) -> Result<Self, Box<dyn Error>> {
-        Ok(Survey { templates })
+    pub fn new(templates: &'a [QuestionConfig]) -> Self {
+        Survey { templates }
     }
 
     pub fn scan_all(
         &self,
         from_sheets: &[SpreadsheetValueRange],
-    ) -> Result<Vec<Responses>, Box<dyn Error>> {
+    ) -> anyhow::Result<Vec<Responses>> {
         let raw_data: Vec<&Vec<String>> = from_sheets
             .iter()
             .flat_map(|sheet_raw_data| &sheet_raw_data.values)
@@ -56,7 +57,7 @@ impl<'a> Survey<'a> {
     //   - optimize against clones
     //   - discriminator config right now works with the assumption that it is the first entry:
     //      solution: first collect discriminators, then process responses
-    fn scan(&self, raw_data: Vec<&Vec<String>>) -> Result<Vec<Responses>, Box<dyn Error>> {
+    fn scan(&self, raw_data: Vec<&Vec<String>>) -> anyhow::Result<Vec<Responses>> {
         let answers = raw_data.into_iter().skip(2);
         let mut category_map: HashMap<String, Responses> = HashMap::new();
         let mut ord_categories: Vec<String> = Vec::new();
@@ -65,10 +66,9 @@ impl<'a> Survey<'a> {
 
         for answer in answers {
             let mut per_category = answer.iter();
-            let qst_stmt = per_category.next().ok_or(format!(
-                "error scanning category question in: {:#?}",
-                per_category
-            ))?;
+            let qst_stmt = per_category.next().ok_or_else(|| {
+                anyhow!("error scanning category question in: {:#?}", per_category)
+            })?;
 
             // todo: optimize here
             let template = match self.find_config_template(qst_stmt) {

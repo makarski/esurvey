@@ -1,7 +1,7 @@
+use anyhow::anyhow;
+
 use crate::sheets;
 use crate::survey::summary::Summary;
-
-use std::error::Error as std_err;
 
 use sheets::spreadsheets::{Sheet, SheetProperties};
 use sheets::spreadsheets_batch_update::{AddSheetRequest, Request, SpreadsheetBatchUpdate};
@@ -24,7 +24,7 @@ impl<'a> SpreadsheetClient<'a> {
         &self,
         sheet_items: &[Sheet],
         spreadsheet_id: &str,
-    ) -> Result<Vec<SpreadsheetValueRange>, Box<dyn std_err>> {
+    ) -> anyhow::Result<Vec<SpreadsheetValueRange>> {
         let sheet_titles = retrieve_sheet_titles(sheet_items);
         println!("sheet titles: > {:#?}", &sheet_titles);
 
@@ -39,7 +39,7 @@ impl<'a> SpreadsheetClient<'a> {
         range: &str,
         spreadsheet_id: &str,
         summary: Summary,
-    ) -> Result<(), Box<dyn std_err>> {
+    ) -> anyhow::Result<()> {
         for rows in summary.generate_rows() {
             let spreadsheet_values = SpreadsheetValueRange {
                 range: range.to_owned(),
@@ -58,11 +58,7 @@ impl<'a> SpreadsheetClient<'a> {
         Ok(())
     }
 
-    pub fn add_summary_sheet(
-        &self,
-        title: &str,
-        spreadsheet_id: &str,
-    ) -> Result<u64, Box<dyn std_err>> {
+    pub fn add_summary_sheet(&self, title: &str, spreadsheet_id: &str) -> anyhow::Result<u64> {
         let batch_update = SpreadsheetBatchUpdate {
             requests: vec![Request {
                 add_sheet: Some(AddSheetRequest {
@@ -81,7 +77,7 @@ impl<'a> SpreadsheetClient<'a> {
         let response_body = self
             .sheets_client
             .batch_update_spreadsheet(self.access_token, spreadsheet_id, &batch_update)
-            .map_err(|err| format!("add_summary_sheet: {}", err))?;
+            .map_err(|err| anyhow!("add_summary_sheet: {}", err))?;
 
         if let Some(reply) = response_body.replies.get(0) {
             if let Some(sheet) = &reply.add_sheet {
@@ -91,10 +87,10 @@ impl<'a> SpreadsheetClient<'a> {
             }
         }
 
-        Err(Box::from(format!(
+        Err(anyhow!(
             "add_summary_sheet: sheet_id not available. spreadsheet_id: {}",
             spreadsheet_id
-        )))
+        ))
     }
 }
 

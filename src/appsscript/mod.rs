@@ -1,7 +1,4 @@
-use std::error::Error;
-use std::io::Error as io_err;
-use std::io::ErrorKind as io_err_kind;
-
+use anyhow::ensure;
 use serde_derive::{Deserialize, Serialize};
 
 pub mod template;
@@ -18,11 +15,7 @@ impl ProjectsClient {
     }
 
     // Creates a new, empty script project with no script files and a base manifest file.
-    pub fn create_project(
-        &self,
-        access_token: &str,
-        title: String,
-    ) -> Result<Project, Box<dyn Error>> {
+    pub fn create_project(&self, access_token: &str, title: String) -> anyhow::Result<Project> {
         let url = format!(
             "https://script.googleapis.com/v1/projects?access_token={}",
             access_token
@@ -37,10 +30,8 @@ impl ProjectsClient {
             })?)
             .send()?;
 
-        match resp.status().is_success() {
-            true => Ok(resp.json::<Project>()?),
-            _ => Err(Box::new(io_err::new(io_err_kind::Other, resp.text()?))),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(resp.json::<Project>()?)
     }
 
     // Updates the content of the specified script project.
@@ -49,7 +40,7 @@ impl ProjectsClient {
         access_token: &str,
         script_id: &str,
         source: String,
-    ) -> Result<Content, Box<dyn Error>> {
+    ) -> anyhow::Result<Content> {
         let url = format!(
             "https://script.googleapis.com/v1/projects/{}/content?access_token={}",
             script_id, access_token
@@ -81,10 +72,8 @@ impl ProjectsClient {
             })?)
             .send()?;
 
-        match resp.status().is_success() {
-            true => Ok(resp.json::<Content>()?),
-            _ => Err(Box::new(io_err::new(io_err_kind::Other, resp.text()?))),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(resp.json::<Content>()?)
     }
 }
 

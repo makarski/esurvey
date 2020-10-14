@@ -1,7 +1,7 @@
 use std::default::Default;
 use std::env::args;
-use std::error::Error;
-use std::io::{Error as io_err, ErrorKind as io_err_kind};
+
+use anyhow::{anyhow, bail};
 
 use crate::appsscript::{template::Template, ProjectsClient};
 use crate::config::{self, QuestionConfig, ResponseKind};
@@ -28,7 +28,7 @@ impl Generator {
         }
     }
 
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self) -> anyhow::Result<()> {
         let flags = parse_flags()?;
         let token = self._auth_client.access_token(super::handle_auth)?;
 
@@ -60,7 +60,9 @@ impl Generator {
 
         let projects_client = ProjectsClient::new();
         let project = projects_client.create_project(&token.access_token, title)?;
-        let script_id = project.script_id.ok_or("could not retrieve script_id")?;
+        let script_id = project
+            .script_id
+            .ok_or_else(|| anyhow!("could not retrieve script_id"))?;
 
         projects_client.update_content(
             &token.access_token,
@@ -76,7 +78,7 @@ impl Generator {
         templates: &[QuestionConfig],
         response_kind: ResponseKind,
         assessment_kind: &str,
-    ) -> Result<Vec<String>, Box<dyn Error>> {
+    ) -> anyhow::Result<Vec<String>> {
         Ok(templates
             .iter()
             .filter(|question| {
@@ -88,7 +90,7 @@ impl Generator {
     }
 }
 
-fn parse_flags() -> Result<Flags, Box<dyn Error>> {
+fn parse_flags() -> anyhow::Result<Flags> {
     let mut flags = Flags::default();
 
     for pair in args().skip(2).collect::<Vec<String>>() {
@@ -133,9 +135,6 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
     if empty_fields.is_empty() {
         Ok(flags)
     } else {
-        Err(Box::new(io_err::new(
-            io_err_kind::InvalidInput,
-            format!("missing flag args: {:#?}", empty_fields.join(", ")),
-        )))
+        bail!("missing flag args: {:#?}", empty_fields.join(", "))
     }
 }

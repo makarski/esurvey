@@ -1,14 +1,13 @@
 use std::env::args;
-use std::error::Error;
-use std::io::{Error as io_err, ErrorKind as io_err_kind};
 
+use anyhow::bail;
+
+use super::handle_auth;
 use crate::chart;
 use crate::config::{self, ResponseKind};
 use crate::drive;
 use crate::sheets;
 use crate::survey::{summary::Summary, Survey};
-
-use super::handle_auth;
 
 const SUMMARY_SHEET_NAME: &str = "Chart and Summary";
 const CHART_NAME: &str = "Chart Results";
@@ -24,7 +23,7 @@ impl Evaluator {
         }
     }
 
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self) -> anyhow::Result<()> {
         let token = self._auth_client.access_token(handle_auth)?;
 
         let flags = parse_flags()?;
@@ -58,7 +57,7 @@ impl Evaluator {
 
             println!("> scanning for: {}", response_kind);
 
-            let survey = Survey::new(&templates_by_kind)?;
+            let survey = Survey::new(&templates_by_kind);
             let responses = survey.scan_all(&spreadsheet_data)?;
 
             summary.set_by_kind(response_kind, responses);
@@ -87,7 +86,7 @@ struct Flags {
     first_name: String,
 }
 
-fn parse_flags() -> Result<Flags, Box<dyn Error>> {
+fn parse_flags() -> anyhow::Result<Flags> {
     let mut flags = Flags {
         spreadsheet_id: String::new(),
         config_file: String::new(),
@@ -116,10 +115,7 @@ fn parse_flags() -> Result<Flags, Box<dyn Error>> {
     .iter()
     {
         if cfg_entry.is_empty() {
-            return Err(Box::new(io_err::new(
-                io_err_kind::InvalidInput,
-                format!("missing required flag: {}", flag_name),
-            )));
+            bail!("missing required flag: {}", flag_name)
         }
     }
 

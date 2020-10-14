@@ -66,7 +66,7 @@ impl Display for ResponseKind {
 pub fn read<P: AsRef<Path>>(
     filename: P,
     replace_with: Vec<(&str, &str)>,
-) -> Result<Vec<QuestionConfig>, Box<dyn std_err>> {
+) -> anyhow::Result<Vec<QuestionConfig>> {
     let file = File::open(filename)?;
     let mut rdr = csv::Reader::from_reader(file);
     let mut out: Vec<QuestionConfig> = Vec::new();

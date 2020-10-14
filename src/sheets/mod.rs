@@ -1,5 +1,4 @@
-use std::error::Error;
-use std::io::{Error as io_err, ErrorKind as io_err_kind};
+use anyhow::ensure;
 
 pub mod spreadsheets;
 use spreadsheets::Spreadsheet;
@@ -9,10 +8,6 @@ pub mod spreadsheets_values;
 mod spreadsheets_sheets {}
 
 pub mod basic_chart;
-
-fn io_other_err(msg: String) -> Box<dyn Error> {
-    Box::new(io_err::new(io_err_kind::Other, msg))
-}
 
 pub struct Client {
     _http_client: reqwest::Client,
@@ -31,7 +26,7 @@ impl Client {
         &self,
         token: S,
         spreadsheet_id: S,
-    ) -> Result<Spreadsheet, Box<dyn Error>> {
+    ) -> anyhow::Result<Spreadsheet> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}?access_token={}",
             spreadsheet_id.as_ref(),
@@ -40,10 +35,8 @@ impl Client {
 
         let mut resp = self._http_client.get(url.as_str()).send()?;
 
-        match resp.status().is_success() {
-            true => Ok(resp.json::<Spreadsheet>()?),
-            _ => Err(io_other_err(resp.text()?)),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(resp.json::<Spreadsheet>()?)
     }
 
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
@@ -53,7 +46,7 @@ impl Client {
         token: S,
         spreadsheet_id: S,
         req: &spreadsheets_batch_update::SpreadsheetBatchUpdate,
-    ) -> Result<spreadsheets_batch_update::BatchUpdateResponse, Box<dyn Error>> {
+    ) -> anyhow::Result<spreadsheets_batch_update::BatchUpdateResponse> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate?access_token={}",
             spreadsheet_id.as_ref(),
@@ -66,10 +59,8 @@ impl Client {
             .body(serde_json::to_vec(req)?)
             .send()?;
 
-        match resp.status().is_success() {
-            true => Ok(resp.json::<spreadsheets_batch_update::BatchUpdateResponse>()?),
-            _ => Err(io_other_err(resp.text()?)),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(resp.json::<spreadsheets_batch_update::BatchUpdateResponse>()?)
     }
 
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchGet
@@ -79,7 +70,7 @@ impl Client {
         token: S,
         spreadsheet_id: S,
         ranges: Vec<String>,
-    ) -> Result<spreadsheets_values::SpreadsheetValues, Box<dyn Error>> {
+    ) -> anyhow::Result<spreadsheets_values::SpreadsheetValues> {
         let range_query_str = ranges[..].join("&ranges=");
 
         let url = format!(
@@ -98,13 +89,14 @@ impl Client {
 
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
     // PUT https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{range}
+    #[allow(dead_code)]
     pub fn update_values<S: AsRef<str>>(
         &self,
         token: S,
         spreadsheet_id: String,
         range: String,
         v: &spreadsheets_values::SpreadsheetValueRange,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> anyhow::Result<()> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}?access_token={}&valueInputOption=USER_ENTERED",
             spreadsheet_id,
@@ -118,10 +110,8 @@ impl Client {
             .body(serde_json::to_vec(v)?)
             .send()?;
 
-        match resp.status().is_success() {
-            true => Ok(()),
-            _ => Err(io_other_err(resp.text()?)),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(())
     }
 
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append
@@ -132,7 +122,7 @@ impl Client {
         spreadsheet_id: String,
         range: String,
         v: &spreadsheets_values::SpreadsheetValueRange,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> anyhow::Result<()> {
         let url = format!(
             "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}:append?access_token={}&valueInputOption=USER_ENTERED",
             spreadsheet_id,
@@ -146,9 +136,7 @@ impl Client {
             .body(serde_json::to_vec(v)?)
             .send()?;
 
-        match resp.status().is_success() {
-            true => Ok(()),
-            _ => Err(io_other_err(resp.text()?)),
-        }
+        ensure!(resp.status().is_success(), resp.text()?);
+        Ok(())
     }
 }
