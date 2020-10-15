@@ -1,5 +1,5 @@
-name: probation-csv
-version: "0.2.0"
+name: Esurvey
+version: "0.3.0"
 author: Siamion Makarski <s.makarski.s@gmail.com>
 about: A CLI app for automating surveys based on google forms and spreadsheets
 args:

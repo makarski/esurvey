@@ -1,6 +1,6 @@
 [package]
-name = "probation-csv"
-version = "0.2.0"
+name = "esurvey"
+version = "0.3.0"
 authors = ["Siamion Makarski <sm@hellofresh.com>"]
 edition = "2018"
 

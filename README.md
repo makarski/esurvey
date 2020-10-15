@@ -16,7 +16,7 @@ Running
 #### Generate [Apps Script](https://developers.google.com/apps-script/api) for automatic form generation
 
 ```sh
-OAUTH_CFG_FILE=/mypath/credentials.json probation-csv \
+OAUTH_CFG_FILE=/mypath/credentials.json esurvey \
     --kind=Team-Feedback \
     --first-name=John \
     --last-name=Smith \
@@ -32,7 +32,7 @@ OAUTH_CFG_FILE=/mypath/credentials.json probation-csv \
 The following command will read the data from the Spreadsheet and create a new Sheet (tab) `Chart and Summary` with processed and categorised data
 
 ```sh
-OAUTH_CFG_FILE=/mypath/credentials.json probation-csv \
+OAUTH_CFG_FILE=/mypath/credentials.json esurvey \
     --sheet-id={google_spreadsheet_id} \
     --template=overall-grading.csv \
     --first-name=John \  
