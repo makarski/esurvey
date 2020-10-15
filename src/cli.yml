@@ -1,0 +1,89 @@
+name: probation-csv
+version: "0.2.0"
+author: Siamion Makarski <s.makarski.s@gmail.com>
+about: A CLI app for automating surveys based on google forms and spreadsheets
+args:
+  - CMD:
+      required: true
+      index: 1
+  - kind:
+      short: k
+      long: kind
+      help: Survey type
+      possible_values:
+        - Team-Feedback
+        - Self-Accessment
+      requires:
+        - first-name
+        - last-name
+        - occasion
+        - dir-id
+        - template
+        - description
+  - first-name:
+      long: first-name
+      takes_value: true
+  - last-name:
+      long: last-name
+      takes_value: true
+      requires:
+        - kind
+        - first-name
+        - occasion
+        - dir-id
+        - template
+        - description
+  - occasion:
+      short: r
+      long: occasion
+      takes_value: true
+      help: "Survey reason. Example: 2-months review"
+      requires:
+        - kind
+        - first-name
+        - last-name
+        - dir-id
+        - template
+        - description
+  - dir-id:
+      short: o
+      long: dir
+      takes_value: true
+      help: "Google Drive target folder id where the Survey form will be generated"
+      requires:
+        - kind
+        - first-name
+        - last-name
+        - template
+        - description
+  - template:
+      short: t
+      long: template
+      takes_value: true
+      value_name: FILE
+  - description:
+      short: d
+      long: description
+      help: Survey description
+      takes_value: true
+      requires:
+        - kind
+        - first-name
+        - last-name
+        - occasion
+        - dir-id
+        - template
+  - sheet-id:
+      short: i
+      long: sheet-id
+      help: "ID of the spreadsheet to `eval`"
+      takes_value: true
+      conflicts_with:
+        - kind
+        - last-name
+        - occasion
+        - dir-id
+        - description
+      requires:
+        - first-name
+        - template

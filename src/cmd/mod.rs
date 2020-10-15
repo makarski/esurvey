@@ -13,10 +13,10 @@ pub enum Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub fn run(self, args: clap::ArgMatches) -> anyhow::Result<()> {
         match self {
-            Cmd::Generate(cmd) => cmd.run(),
-            Cmd::Evaluate(cmd) => cmd.run(),
+            Cmd::Generate(generate) => generate.run(args),
+            Cmd::Evaluate(eval) => eval.run(args),
         }
     }
 }

@@ -1,21 +1,9 @@
 use std::default::Default;
-use std::env::args;
 
 use anyhow::{anyhow, bail};
 
 use crate::appsscript::{template::Template, ProjectsClient};
 use crate::config::{self, QuestionConfig, ResponseKind};
-
-#[derive(Default, Debug)]
-struct Flags {
-    assessment_kind: String,
-    first_name: String,
-    last_name: String,
-    occasion: String,
-    drive_dir_id: String,
-    template_file: String,
-    description: String,
-}
 
 pub struct Generator {
     _auth_client: gauth::Auth,
@@ -28,8 +16,8 @@ impl Generator {
         }
     }
 
-    pub fn run(&self) -> anyhow::Result<()> {
-        let flags = parse_flags()?;
+    pub fn run(&self, args: clap::ArgMatches) -> anyhow::Result<()> {
+        let flags = Flags::default().parse(args)?;
         let token = self._auth_client.access_token(super::handle_auth)?;
 
         let title = format!(
@@ -90,51 +78,48 @@ impl Generator {
     }
 }
 
-fn parse_flags() -> anyhow::Result<Flags> {
-    let mut flags = Flags::default();
+#[derive(Default, Debug)]
+struct Flags {
+    assessment_kind: String,
+    first_name: String,
+    last_name: String,
+    occasion: String,
+    drive_dir_id: String,
+    template_file: String,
+    description: String,
+}
 
-    for pair in args().skip(2).collect::<Vec<String>>() {
-        let pairs = pair.split_terminator('=').collect::<Vec<&str>>();
+impl Flags {
+    fn parse(mut self, args: clap::ArgMatches) -> anyhow::Result<Self> {
+        let keys = [
+            "kind",
+            "first-name",
+            "last-name",
+            "occasion",
+            "dir",
+            "template",
+            "description",
+        ];
 
-        if pairs.len() < 2 {
-            continue;
+        for key in keys.iter() {
+            if let Some(v) = args.value_of(key) {
+                let v = v.to_owned();
+
+                match *key {
+                    "kind" => self.assessment_kind = v,
+                    "first-name" => self.first_name = v,
+                    "last-name" => self.last_name = v,
+                    "occasion" => self.occasion = v,
+                    "dir" => self.drive_dir_id = v,
+                    "template" => self.template_file = v,
+                    "description" => self.description = v,
+                    _ => {}
+                };
+            } else {
+                bail!("Argument `{}` not found", key);
+            }
         }
 
-        let v = pairs[1].to_owned();
-
-        match pairs[0] {
-            "-kind" => flags.assessment_kind = v,
-            "-first-name" => flags.first_name = v,
-            "-last-name" => flags.last_name = v,
-            "-occasion" => flags.occasion = v,
-            "-dir-id" => flags.drive_dir_id = v,
-            "-templates" => flags.template_file = v,
-            "-description" => flags.description = v,
-            _ => {}
-        };
-    }
-
-    let mut empty_fields: Vec<&str> = Vec::new();
-
-    for (flag_name, flag_entry) in [
-        ("-kind", &flags.assessment_kind),
-        ("-first-name", &flags.first_name),
-        ("-last-name", &flags.last_name),
-        ("-occasion", &flags.occasion),
-        ("-dir-id", &flags.drive_dir_id),
-        ("-templates", &flags.template_file),
-        ("-description", &flags.description),
-    ]
-    .iter()
-    {
-        if flag_entry.is_empty() {
-            empty_fields.push(flag_name);
-        }
-    }
-
-    if empty_fields.is_empty() {
-        Ok(flags)
-    } else {
-        bail!("missing flag args: {:#?}", empty_fields.join(", "))
+        Ok(self)
     }
 }

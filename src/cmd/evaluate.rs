@@ -1,5 +1,3 @@
-use std::env::args;
-
 use anyhow::bail;
 
 use super::handle_auth;
@@ -23,10 +21,10 @@ impl Evaluator {
         }
     }
 
-    pub fn run(&self) -> anyhow::Result<()> {
+    pub fn run(&self, args: clap::ArgMatches) -> anyhow::Result<()> {
         let token = self._auth_client.access_token(handle_auth)?;
+        let flags = Flags::default().parse(args)?;
 
-        let flags = parse_flags()?;
         println!("entered id: {}", flags.spreadsheet_id);
         println!("entered templates file: {}", flags.config_file);
 
@@ -80,44 +78,29 @@ impl Evaluator {
     }
 }
 
+#[derive(Default)]
 struct Flags {
     spreadsheet_id: String,
     config_file: String,
     first_name: String,
 }
 
-fn parse_flags() -> anyhow::Result<Flags> {
-    let mut flags = Flags {
-        spreadsheet_id: String::new(),
-        config_file: String::new(),
-        first_name: String::new(),
-    };
-
-    for arg in args().collect::<Vec<String>>() {
-        if arg.contains("-id=") {
-            flags.spreadsheet_id = arg.trim_start_matches("-id=").parse()?;
+impl Flags {
+    fn parse(mut self, args: clap::ArgMatches) -> anyhow::Result<Self> {
+        let keys = ["sheet-id", "template", "first-name"];
+        for key in keys.iter() {
+            if let Some(v) = args.value_of(key) {
+                let v = v.to_owned();
+                match *key {
+                    "sheet-id" => self.spreadsheet_id = v,
+                    "template" => self.config_file = v,
+                    "first-name" => self.first_name = v,
+                    _ => {}
+                }
+            } else {
+                bail!("Argument `{}` not found", key);
+            }
         }
-
-        if arg.contains("-templates=") {
-            flags.config_file = arg.trim_start_matches("-templates=").parse()?;
-        }
-
-        if arg.contains("-first-name=") {
-            flags.first_name = arg.trim_start_matches("-first-name=").parse()?;
-        }
+        Ok(self)
     }
-
-    for (flag_name, cfg_entry) in [
-        ("-spreadsheet_id", &flags.spreadsheet_id),
-        ("-templates", &flags.config_file),
-        ("-first-name", &flags.first_name),
-    ]
-    .iter()
-    {
-        if cfg_entry.is_empty() {
-            bail!("missing required flag: {}", flag_name)
-        }
-    }
-
-    Ok(flags)
 }
