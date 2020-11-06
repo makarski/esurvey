@@ -96,7 +96,7 @@ impl Flags {
             "first-name",
             "last-name",
             "occasion",
-            "dir",
+            "dir-id",
             "template",
             "description",
         ];
@@ -110,7 +110,7 @@ impl Flags {
                     "first-name" => self.first_name = v,
                     "last-name" => self.last_name = v,
                     "occasion" => self.occasion = v,
-                    "dir" => self.drive_dir_id = v,
+                    "dir-id" => self.drive_dir_id = v,
                     "template" => self.template_file = v,
                     "description" => self.description = v,
                     _ => {}
