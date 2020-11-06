@@ -12,7 +12,7 @@ args:
       help: Survey type
       possible_values:
         - Team-Feedback
-        - Self-Accessment
+        - Self-Assessment
       requires:
         - first-name
         - last-name
