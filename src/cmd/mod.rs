@@ -42,13 +42,13 @@ fn auth_client() -> Result<gauth::Auth, Box<dyn Error>> {
     let crd_path = env::var("OAUTH_CFG_FILE")?;
     let auth_client = gauth::Auth::new(
         "probation-check",
-        vec![
-            "https://www.googleapis.com/auth/drive".to_owned(),
-            "https://www.googleapis.com/auth/drive.readonly".to_owned(),
-            "https://www.googleapis.com/auth/drive.file".to_owned(),
-            "https://www.googleapis.com/auth/spreadsheets".to_owned(),
-            "https://www.googleapis.com/auth/spreadsheets.readonly".to_owned(),
-            "https://www.googleapis.com/auth/script.projects".to_owned(),
+        &[
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.file",
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+            "https://www.googleapis.com/auth/script.projects",
         ],
         PathBuf::from(crd_path),
     );
