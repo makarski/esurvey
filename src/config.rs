@@ -41,7 +41,7 @@ impl ResponseKind {
             .sum::<f32>()
             / grades.len() as f32;
 
-        Some(calc.to_string())
+        Some(format!("{:.1}", calc))
     }
 
     fn process_reviews(&self, reviews: &[String]) -> Option<String> {
